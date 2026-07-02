@@ -1,0 +1,174 @@
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { db } from '../../data/mockData';
+import { useAuth } from '../../context/AuthContext';
+import { Home, Wallet, ShieldAlert, CalendarRange, Pin, ArrowRight } from 'lucide-react';
+
+export default function TenantDashboard() {
+  const { user } = useAuth();
+  const [room, setRoom] = useState(null);
+  const [feeDue, setFeeDue] = useState(null);
+  const [recentNotice, setRecentNotice] = useState(null);
+  const [activeLeave, setActiveLeave] = useState(null);
+
+  useEffect(() => {
+    // Get room details
+    const rooms = db.getRooms();
+    const myRoom = rooms.find(r => r.id === user.roomId);
+    setRoom(myRoom);
+
+    // Get current month unpaid fee
+    const fees = db.getFees().filter(f => f.studentId === user.id);
+    const unpaid = fees.find(f => f.status === 'Unpaid');
+    setFeeDue(unpaid);
+
+    // Get latest notice
+    const notices = db.getNotices().filter(n => n.target === 'All' || n.target === 'Students');
+    if (notices.length > 0) {
+      setRecentNotice(notices[0]);
+    }
+
+    // Get latest leave application
+    const leaves = db.getLeaves().filter(l => l.studentId === user.id);
+    if (leaves.length > 0) {
+      setActiveLeave(leaves[0]);
+    }
+  }, [user]);
+
+  return (
+    <div className="space-y-6">
+      {/* Welcome banner */}
+      <div className="bg-gradient-to-r from-indigo-650 to-violet-600 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-indigo-600/10">
+        <div className="max-w-xl space-y-2">
+          <span className="bg-white/20 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider">
+            Resident Portal
+          </span>
+          <h1 className="text-xl md:text-3xl font-extrabold tracking-tight">Welcome, {user?.name}!</h1>
+          <p className="text-xs text-indigo-105 leading-relaxed font-semibold">
+            Manage your hostel residency at {user?.hostelName || 'Elite Residency PG'}. View roommates, clear rent dues, submit complaints, and request gate outpasses.
+          </p>
+        </div>
+      </div>
+
+      {/* Quick stats dashboard cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Room Info card */}
+        <div className="bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 p-5 rounded-2xl flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider">Room Allocation</span>
+            <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">Room {room?.roomNo || 'Unassigned'}</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">{room?.type || 'Double Sharing'}</p>
+          </div>
+          <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+            <Home className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Fees Status card */}
+        <div className="bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 p-5 rounded-2xl flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider">Rent Status</span>
+            <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">
+              {feeDue ? `₹${feeDue.amount}` : 'Cleared'}
+            </p>
+            <p className="text-[10px] text-slate-400 mt-0.5">{feeDue ? `Due for ${feeDue.month}` : 'No outstanding bills'}</p>
+          </div>
+          <div className={`p-3 rounded-xl ${feeDue ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
+            <Wallet className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Leaves outpass card */}
+        <div className="bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 p-5 rounded-2xl flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider">Latest Outpass</span>
+            <p className="text-xl font-extrabold text-slate-900 dark:text-white mt-1 truncate max-w-[140px]">
+              {activeLeave ? activeLeave.status : 'No Requests'}
+            </p>
+            <p className="text-[10px] text-slate-400 mt-0.5">{activeLeave ? `${activeLeave.startDate} to ${activeLeave.endDate}` : 'No active leaves'}</p>
+          </div>
+          <div className="p-3 rounded-xl bg-amber-500/10 text-amber-500">
+            <CalendarRange className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Notice Board card */}
+        <div className="bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 p-5 rounded-2xl flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider">Lobby Notice</span>
+            <p className="text-sm font-extrabold text-slate-900 dark:text-white mt-1.5 truncate max-w-[140px]">
+              {recentNotice ? recentNotice.title : 'No Alerts'}
+            </p>
+            <p className="text-[10px] text-slate-400 mt-0.5">{recentNotice ? `By ${recentNotice.createdBy}` : 'Hostel operates normally'}</p>
+          </div>
+          <div className="p-3 rounded-xl bg-violet-500/10 text-violet-650 dark:text-violet-400">
+            <Pin className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom split columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Notice Board Preview */}
+        <div className="bg-white dark:bg-slate-955 border border-slate-250/60 dark:border-slate-850 rounded-2xl p-5 space-y-4 shadow-xs">
+          <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-850">
+            <h3 className="font-extrabold text-sm flex items-center gap-2">
+              <Pin className="w-4.5 h-4.5 text-indigo-550 dark:text-indigo-400" />
+              Important Announcements
+            </h3>
+            <Link to="/tenant/notices" className="text-[10px] font-bold text-indigo-650 hover:underline flex items-center gap-0.5">
+              Read Notices <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+
+          {recentNotice ? (
+            <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-855 rounded-xl space-y-2">
+              <h4 className="font-bold text-xs text-slate-900 dark:text-white">{recentNotice.title}</h4>
+              <p className="text-xs text-slate-600 dark:text-slate-350 leading-relaxed">
+                {recentNotice.content}
+              </p>
+              <div className="text-[9px] text-slate-400 pt-1 flex justify-between">
+                <span>Issued by: {recentNotice.createdBy}</span>
+                <span>Date: {recentNotice.date}</span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-center text-xs text-slate-400 py-6">No recent notices published.</p>
+          )}
+        </div>
+
+        {/* Roommate details */}
+        <div className="bg-white dark:bg-slate-955 border border-slate-250/60 dark:border-slate-850 rounded-2xl p-5 space-y-4 shadow-xs">
+          <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-850">
+            <h3 className="font-extrabold text-sm flex items-center gap-2">
+              <Home className="w-4.5 h-4.5 text-indigo-555 dark:text-indigo-400" />
+              Room & Policy Information
+            </h3>
+            <Link to="/tenant/room" className="text-[10px] font-bold text-indigo-650 hover:underline flex items-center gap-0.5">
+              Room Details <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex justify-between text-xs pb-2 border-b border-slate-50 dark:border-slate-900/50">
+              <span className="text-slate-450 dark:text-slate-500">Sharing Mode</span>
+              <span className="font-bold text-slate-900 dark:text-white">{room?.type || 'Double Sharing'}</span>
+            </div>
+            <div className="flex justify-between text-xs pb-2 border-b border-slate-50 dark:border-slate-900/50">
+              <span className="text-slate-450 dark:text-slate-500">Floor Level</span>
+              <span className="font-bold text-slate-900 dark:text-white">{room?.floor || '1st Floor'}</span>
+            </div>
+            <div className="flex justify-between text-xs pb-2 border-b border-slate-50 dark:border-slate-900/50">
+              <span className="text-slate-455 dark:text-slate-500">AC/Climate Control</span>
+              <span className="font-bold text-slate-900 dark:text-white">{room?.ac ? 'Air Conditioned (AC)' : 'Non-AC Room'}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-slate-450 dark:text-slate-500">Monthly Rent Charge</span>
+              <span className="font-extrabold text-indigo-650 dark:text-indigo-400">₹{room?.rent || 'N/A'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

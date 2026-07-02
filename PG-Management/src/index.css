@@ -1,0 +1,178 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+:root {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  scroll-behavior: smooth;
+
+  /* Clean & Simple Light Mode Theme Colors */
+  --indigo-50: #f8fafc;   /* slate-50 equivalent */
+  --indigo-100: #f1f5f9;  /* slate-100 equivalent */
+  --indigo-200: #e2e8f0;  /* slate-200 equivalent */
+  --indigo-300: #cbd5e1;  /* slate-300 equivalent */
+  --indigo-400: #94a3b8;  /* slate-400 equivalent */
+  --indigo-500: #64748b;  /* slate-500 equivalent */
+  --indigo-600: #0f172a;  /* slate-900 (dark accent button) */
+  --indigo-650: #020617;  /* slate-950 (dark accent) */
+  --indigo-700: #000000;  /* pure black */
+  --indigo-950: #020617;
+  
+  --violet-500: #475569;
+  --violet-600: #334155;
+
+  /* Slate Scale for Light Mode */
+  --slate-50: #fafafa;
+  --slate-100: #f4f4f5;
+  --slate-200: #e4e4e7;
+  --slate-300: #d4d4d8;
+  --slate-400: #a1a1aa;
+  --slate-450: #71717a;
+  --slate-500: #52525b;
+  --slate-550: #3f3f46;
+  --slate-650: #27272a;
+  --slate-655: #18181b;
+  --slate-700: #18181b;
+  --slate-750: #09090b;
+  --slate-800: #09090b;
+  --slate-850: #e4e4e7;
+  --slate-900: #09090b;
+  --slate-950: #ffffff;
+  --slate-955: #ffffff;
+}
+
+.dark {
+  /* Clean & Simple Dark Mode Theme Colors */
+  --indigo-50: #18181b;   /* zinc-900 */
+  --indigo-100: #27272a;  /* zinc-800 */
+  --indigo-200: #3f3f46;  /* zinc-700 */
+  --indigo-300: #52525b;
+  --indigo-400: #a1a1aa;
+  --indigo-500: #d4d4d8;
+  --indigo-600: #18181b;  /* dark background for active buttons/states */
+  --indigo-650: #f4f4f5;  /* light accent text */
+  --indigo-700: #ffffff;  /* white accent text */
+  --indigo-950: #09090b;
+  
+  --violet-500: #a1a1aa;
+  --violet-600: #27272a;
+
+  /* Slate Scale for Dark Mode */
+  --slate-50: #09090b;   /* base background */
+  --slate-100: #ffffff;  /* text-slate-100 is light */
+  --slate-200: #27272a;  /* border */
+  --slate-300: #fafafa;
+  --slate-400: #a1a1aa;  /* gray text */
+  --slate-450: #a1a1aa;
+  --slate-500: #d4d4d8;
+  --slate-550: #e4e4e7;
+  --slate-650: #f4f4f5;
+  --slate-655: #ffffff;
+  --slate-700: #ffffff;
+  --slate-750: #ffffff;
+  --slate-800: #ffffff;
+  --slate-850: #27272a;  /* dark border */
+  --slate-900: #09090b;  /* base background */
+  --slate-955: #18181b;  /* card background */
+  --slate-950: #18181b;  /* card background */
+}
+
+@theme {
+  --color-indigo-50: var(--indigo-50);
+  --color-indigo-100: var(--indigo-100);
+  --color-indigo-200: var(--indigo-200);
+  --color-indigo-300: var(--indigo-300);
+  --color-indigo-400: var(--indigo-400);
+  --color-indigo-500: var(--indigo-500);
+  --color-indigo-600: var(--indigo-600);
+  --color-indigo-650: var(--indigo-650);
+  --color-indigo-700: var(--indigo-700);
+  --color-indigo-950: var(--indigo-950);
+  
+  --color-violet-500: var(--violet-500);
+  --color-violet-600: var(--violet-600);
+  
+  --color-slate-50: var(--slate-50);
+  --color-slate-100: var(--slate-100);
+  --color-slate-200: var(--slate-200);
+  --color-slate-300: var(--slate-300);
+  --color-slate-400: var(--slate-400);
+  --color-slate-450: var(--slate-450);
+  --color-slate-500: var(--slate-500);
+  --color-slate-550: var(--slate-550);
+  --color-slate-650: var(--slate-650);
+  --color-slate-655: var(--slate-655);
+  --color-slate-700: var(--slate-700);
+  --color-slate-750: var(--slate-750);
+  --color-slate-800: var(--slate-800);
+  --color-slate-850: var(--slate-850);
+  --color-slate-900: var(--slate-900);
+  --color-slate-950: var(--slate-955);
+  --color-slate-955: var(--slate-955);
+}
+
+/* 
+  SELF-HEALING CONTRAST RULES:
+  Ensures that dark text colors automatically switch to white in dark mode,
+  preventing text invisibility bugs even if developers forgot "dark:" prefixes.
+*/
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-slate-750,
+.dark .text-slate-700,
+.dark .text-slate-655,
+.dark .text-slate-650,
+.dark .text-slate-600,
+.dark .text-indigo-600,
+.dark .text-indigo-650,
+.dark .text-black,
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6,
+.dark th {
+  color: #ffffff !important;
+}
+
+.dark .text-slate-500,
+.dark .text-slate-550,
+.dark .text-slate-450,
+.dark .text-slate-400 {
+  color: #a1a1aa !important; /* readable secondary text in dark mode */
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Smooth transitions for theme toggle */
+* {
+  transition-property: background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
