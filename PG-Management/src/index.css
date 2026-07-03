@@ -8,107 +8,238 @@
 
   /* Clean & Simple Light Mode Theme Colors */
   --indigo-50: #f8fafc;   /* slate-50 equivalent */
+  --indigo-55: #eef2ff;
   --indigo-100: #f1f5f9;  /* slate-100 equivalent */
   --indigo-200: #e2e8f0;  /* slate-200 equivalent */
   --indigo-300: #cbd5e1;  /* slate-300 equivalent */
   --indigo-400: #94a3b8;  /* slate-400 equivalent */
   --indigo-500: #64748b;  /* slate-500 equivalent */
+  --indigo-550: #4f46e5;
   --indigo-600: #0f172a;  /* slate-900 (dark accent button) */
   --indigo-650: #020617;  /* slate-950 (dark accent) */
   --indigo-700: #000000;  /* pure black */
+  --indigo-750: #000000;
+  --indigo-755: #000000;
   --indigo-950: #020617;
+  --indigo-955: #09090b;
   
   --violet-500: #475569;
   --violet-600: #334155;
 
   /* Slate Scale for Light Mode */
   --slate-50: #fafafa;
+  --slate-55: #f4f4f5;
   --slate-100: #f4f4f5;
   --slate-200: #e4e4e7;
+  --slate-250: #e4e4e7;
+  --slate-305: #cbd5e1;
   --slate-300: #d4d4d8;
+  --slate-350: #cbd5e1;
   --slate-400: #a1a1aa;
+  --slate-405: #94a3b8;
   --slate-450: #71717a;
+  --slate-455: #71717a;
   --slate-500: #52525b;
+  --slate-505: #52525b;
   --slate-550: #3f3f46;
+  --slate-555: #3f3f46;
+  --slate-600: #475569;
   --slate-650: #27272a;
   --slate-655: #18181b;
   --slate-700: #18181b;
   --slate-750: #09090b;
   --slate-800: #09090b;
+  --slate-805: #cbd5e1;
   --slate-850: #e4e4e7;
+  --slate-855: #e4e4e7;
   --slate-900: #09090b;
-  --slate-950: #ffffff;
-  --slate-955: #ffffff;
+  --slate-950: #09090b;
+  --slate-955: #18181b;
+
+  /* Status Scale for Light Mode */
+  --emerald-50: #ecfdf5;
+  --emerald-250: #a7f3d0;
+  --emerald-400: #34d399;
+  --emerald-500: #10b981;
+  --emerald-550: #10b981;
+  --emerald-600: #059669;
+  --emerald-650: #047857;
+  --emerald-955: #064e3b;
+
+  --red-50: #fef2f2;
+  --red-55: #fee2e2;
+  --red-250: #fecaca;
+  --red-400: #f87171;
+  --red-500: #ef4444;
+  --red-600: #dc2626;
+  --red-650: #b91c1c;
+  --red-955: #7f1d1d;
+
+  --amber-50: #fffbeb;
+  --amber-250: #fde68a;
+  --amber-400: #fbbf24;
+  --amber-500: #f59e0b;
+  --amber-550: #d97706;
+  --amber-600: #d97706;
+  --amber-650: #b45309;
+  --amber-955: #78350f;
 }
 
 .dark {
   /* Clean & Simple Dark Mode Theme Colors */
   --indigo-50: #18181b;   /* zinc-900 */
+  --indigo-55: #312e81;
   --indigo-100: #27272a;  /* zinc-800 */
   --indigo-200: #3f3f46;  /* zinc-700 */
   --indigo-300: #52525b;
   --indigo-400: #a1a1aa;
   --indigo-500: #d4d4d8;
+  --indigo-550: #818cf8;
   --indigo-600: #18181b;  /* dark background for active buttons/states */
   --indigo-650: #f4f4f5;  /* light accent text */
   --indigo-700: #ffffff;  /* white accent text */
+  --indigo-750: #ffffff;
+  --indigo-755: #ffffff;
   --indigo-950: #09090b;
+  --indigo-955: #09090b;
   
   --violet-500: #a1a1aa;
   --violet-600: #27272a;
 
   /* Slate Scale for Dark Mode */
   --slate-50: #09090b;   /* base background */
+  --slate-55: #18181b;
   --slate-100: #ffffff;  /* text-slate-100 is light */
   --slate-200: #27272a;  /* border */
+  --slate-250: #27272a;
+  --slate-305: #fafafa;
   --slate-300: #fafafa;
+  --slate-350: #cbd5e1;
   --slate-400: #a1a1aa;  /* gray text */
+  --slate-405: #a1a1aa;
   --slate-450: #a1a1aa;
+  --slate-455: #a1a1aa;
   --slate-500: #d4d4d8;
+  --slate-505: #d4d4d8;
   --slate-550: #e4e4e7;
+  --slate-555: #e4e4e7;
+  --slate-600: #a1a1aa;
   --slate-650: #f4f4f5;
   --slate-655: #ffffff;
-  --slate-700: #ffffff;
-  --slate-750: #ffffff;
-  --slate-800: #ffffff;
+  --slate-700: #27272a;
+  --slate-750: #18181b;
+  --slate-800: #18181b;
+  --slate-805: #27272a;
   --slate-850: #27272a;  /* dark border */
+  --slate-855: #27272a;
   --slate-900: #09090b;  /* base background */
   --slate-955: #18181b;  /* card background */
   --slate-950: #18181b;  /* card background */
+
+  /* Status Scale for Dark Mode */
+  --emerald-50: #022c22;
+  --emerald-250: #064e3b;
+  --emerald-400: #34d399;
+  --emerald-500: #10b981;
+  --emerald-550: #34d399;
+  --emerald-600: #059669;
+  --emerald-650: #34d399;
+  --emerald-955: #022c22;
+
+  --red-50: #450a0a;
+  --red-55: #7f1d1d;
+  --red-250: #7f1d1d;
+  --red-400: #f87171;
+  --red-500: #ef4444;
+  --red-600: #dc2626;
+  --red-650: #f87171;
+  --red-955: #450a0a;
+
+  --amber-50: #451a03;
+  --amber-250: #78350f;
+  --amber-400: #fbbf24;
+  --amber-500: #f59e0b;
+  --amber-550: #fbbf24;
+  --amber-600: #d97706;
+  --amber-650: #fcd34d;
+  --amber-955: #451a03;
 }
 
 @theme {
   --color-indigo-50: var(--indigo-50);
+  --color-indigo-55: var(--indigo-55);
   --color-indigo-100: var(--indigo-100);
   --color-indigo-200: var(--indigo-200);
   --color-indigo-300: var(--indigo-300);
   --color-indigo-400: var(--indigo-400);
   --color-indigo-500: var(--indigo-500);
+  --color-indigo-550: var(--indigo-550);
   --color-indigo-600: var(--indigo-600);
   --color-indigo-650: var(--indigo-650);
   --color-indigo-700: var(--indigo-700);
+  --color-indigo-750: var(--indigo-750);
+  --color-indigo-755: var(--indigo-755);
   --color-indigo-950: var(--indigo-950);
+  --color-indigo-955: var(--indigo-955);
   
   --color-violet-500: var(--violet-500);
   --color-violet-600: var(--violet-600);
   
   --color-slate-50: var(--slate-50);
+  --color-slate-55: var(--slate-55);
   --color-slate-100: var(--slate-100);
   --color-slate-200: var(--slate-200);
+  --color-slate-250: var(--slate-250);
+  --color-slate-305: var(--slate-305);
   --color-slate-300: var(--slate-300);
+  --color-slate-350: var(--slate-350);
   --color-slate-400: var(--slate-400);
+  --color-slate-405: var(--slate-405);
   --color-slate-450: var(--slate-450);
+  --color-slate-455: var(--slate-455);
   --color-slate-500: var(--slate-500);
+  --color-slate-505: var(--slate-505);
   --color-slate-550: var(--slate-550);
+  --color-slate-555: var(--slate-555);
+  --color-slate-600: var(--slate-600);
   --color-slate-650: var(--slate-650);
   --color-slate-655: var(--slate-655);
   --color-slate-700: var(--slate-700);
   --color-slate-750: var(--slate-750);
   --color-slate-800: var(--slate-800);
+  --color-slate-805: var(--slate-805);
   --color-slate-850: var(--slate-850);
+  --color-slate-855: var(--slate-855);
   --color-slate-900: var(--slate-900);
   --color-slate-950: var(--slate-955);
   --color-slate-955: var(--slate-955);
+
+  --color-emerald-50: var(--emerald-50);
+  --color-emerald-250: var(--emerald-250);
+  --color-emerald-400: var(--emerald-400);
+  --color-emerald-500: var(--emerald-500);
+  --color-emerald-550: var(--emerald-550);
+  --color-emerald-600: var(--emerald-600);
+  --color-emerald-650: var(--emerald-650);
+  --color-emerald-955: var(--emerald-955);
+
+  --color-red-50: var(--red-50);
+  --color-red-55: var(--red-55);
+  --color-red-250: var(--red-250);
+  --color-red-400: var(--red-400);
+  --color-red-500: var(--red-500);
+  --color-red-600: var(--red-600);
+  --color-red-650: var(--red-650);
+  --color-red-955: var(--red-955);
+
+  --color-amber-50: var(--amber-50);
+  --color-amber-250: var(--amber-250);
+  --color-amber-405: var(--amber-405);
+  --color-amber-500: var(--amber-500);
+  --color-amber-550: var(--amber-550);
+  --color-amber-600: var(--amber-600);
+  --color-amber-650: var(--amber-650);
+  --color-amber-955: var(--amber-955);
 }
 
 /* 
@@ -141,6 +272,25 @@
 .dark .text-slate-450,
 .dark .text-slate-400 {
   color: #a1a1aa !important; /* readable secondary text in dark mode */
+}
+
+/* 
+  Ensures that buttons with light backgrounds in dark mode have dark text,
+  preventing white-on-white text invisibility in buttons.
+*/
+.dark .bg-indigo-650,
+.dark .bg-indigo-700,
+.dark .bg-indigo-750,
+.dark .bg-indigo-755 {
+  color: #09090b !important;
+}
+
+.dark .bg-indigo-650 *,
+.dark .bg-indigo-700 *,
+.dark .bg-indigo-750 *,
+.dark .bg-indigo-755 * {
+  color: #09090b !important;
+  stroke: #09090b !important;
 }
 
 /* Custom Scrollbar */
