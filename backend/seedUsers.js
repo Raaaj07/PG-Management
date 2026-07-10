@@ -19,7 +19,12 @@ const seed = async () => {
     console.log('Connected. Dropping old user accounts...');
     await User.deleteMany({});
     console.log(`Inserting ${initialUsers.length} initial users with password hashes...`);
-    await User.insertMany(initialUsers);
+    const usersWithFields = initialUsers.map(u => ({
+      ...u,
+      status: 'Active',
+      mustResetPassword: false
+    }));
+    await User.insertMany(usersWithFields);
     console.log('User seeding completed successfully.');
     process.exit(0);
   } catch (err) {

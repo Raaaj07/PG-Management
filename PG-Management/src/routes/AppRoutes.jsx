@@ -15,7 +15,7 @@ import { AccessDeniedPage } from '../pages/public/AccessDeniedPage';
 
 // Hostel Admin (PG Admin) Pages
 import { HostelAdminDashboard } from '../pages/hostel-admin/HostelAdminDashboard';
-import { TenantManagement } from '../pages/hostel-admin/TenantManagement';
+import { UserManagement } from '../pages/hostel-admin/UserManagement';
 import { RoomManagement } from '../pages/hostel-admin/RoomManagement';
 import { RoomAllocation } from '../pages/hostel-admin/RoomAllocation';
 import { FeeManagement } from '../pages/hostel-admin/FeeManagement';
@@ -70,7 +70,7 @@ export const AppRoutes = () => {
         }
       >
         <Route index element={<HostelAdminDashboard />} />
-        <Route path="tenants" element={<TenantManagement />} />
+        <Route path="tenants" element={<UserManagement />} />
         <Route path="rooms" element={<RoomManagement />} />
         <Route path="allocations" element={<RoomAllocation />} />
         <Route path="fees" element={<FeeManagement />} />

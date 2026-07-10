@@ -75,7 +75,11 @@ export default function TenantProfile() {
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
-    if (!passwordForm.newPassword || passwordForm.newPassword !== passwordForm.confirmPassword) {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      alert('Please fill in all password fields.');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       alert('New passwords do not match!');
       return;
     }
@@ -83,13 +87,17 @@ export default function TenantProfile() {
     setLoading(true);
 
     try {
-      await client.put(`/users/${user.id}`, { password: passwordForm.newPassword });
+      await client.put('/auth/change-password', {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
       setSuccessMsg('Password updated successfully!');
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
       console.error('Failed to update password:', err);
-      setError('Failed to update password.');
+      const errMsg = err.response?.data?.error || 'Failed to update password.';
+      setError(errMsg);
     } finally {
       setLoading(false);
     }

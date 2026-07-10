@@ -219,7 +219,7 @@ export const DashboardLayout = () => {
                   {sidebarOpen && <span className="truncate">{item.name}</span>}
                 </div>
                 {sidebarOpen && item.badge > 0 && (
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${active ? 'bg-white text-indigo-600' : 'bg-red-500 text-white'}`}>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${active ? 'bg-white text-indigo-600 dark:text-indigo-955' : 'bg-red-500 text-white'}`}>
                     {item.badge}
                   </span>
                 )}

@@ -99,6 +99,10 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid email or password.' });
     }
 
+    if (user.status === 'Deactivated') {
+      return res.status(401).json({ success: false, error: 'Your account is deactivated. Please contact management.' });
+    }
+
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
       return res.status(401).json({ success: false, error: 'Invalid email or password.' });
@@ -118,6 +122,39 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT /api/auth/change-password
+router.put('/change-password', requireAuth, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ success: false, error: 'Please enter current and new password.' });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ success: false, error: 'New password must be at least 8 characters long.' });
+  }
+
+  try {
+    const user = await User.findOne({ id: req.user.id });
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+
+    const match = await bcrypt.compare(currentPassword, user.password);
+    if (!match) {
+      return res.status(401).json({ success: false, error: 'Current password is incorrect.' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.mustResetPassword = false;
+    await user.save();
+
+    res.json({ success: true, message: 'Password changed successfully.' });
+  } catch (error) {
+    console.error('Change password error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

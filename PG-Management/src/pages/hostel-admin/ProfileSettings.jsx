@@ -130,8 +130,8 @@ export default function ProfileSettings() {
 
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
-    if (!passwordForm.newPassword || !passwordForm.confirmPassword) {
-      showNotification('Please fill in password fields.', 'error');
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      showNotification('Please fill in all password fields.', 'error');
       return;
     }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
@@ -141,12 +141,16 @@ export default function ProfileSettings() {
     setLoading(true);
 
     try {
-      await client.put(`/users/${user.id}`, { password: passwordForm.newPassword });
+      await client.put('/auth/change-password', {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
       showNotification('Password updated successfully!');
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (err) {
       console.error('Failed to update password:', err);
-      showNotification('Failed to update password in database.', 'error');
+      const errMsg = err.response?.data?.error || 'Failed to update password.';
+      showNotification(errMsg, 'error');
     } finally {
       setLoading(false);
     }

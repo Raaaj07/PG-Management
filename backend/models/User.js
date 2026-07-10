@@ -15,7 +15,9 @@ const userSchema = new mongoose.Schema({
   emergencyContact: { type: String },
   college: { type: String, default: 'Not Specified' },
   address: { type: String },
-  gender: { type: String, default: 'Not Specified' }
+  gender: { type: String, default: 'Not Specified' },
+  status: { type: String, default: 'Active' },
+  mustResetPassword: { type: Boolean, default: false }
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);

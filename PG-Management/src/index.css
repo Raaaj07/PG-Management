@@ -73,6 +73,7 @@
   --red-500: #ef4444;
   --red-600: #dc2626;
   --red-650: #b91c1c;
+  --red-655: #b91c1c;
   --red-955: #7f1d1d;
 
   --amber-50: #fffbeb;
@@ -153,6 +154,7 @@
   --red-500: #ef4444;
   --red-600: #dc2626;
   --red-650: #f87171;
+  --red-655: #f87171;
   --red-955: #450a0a;
 
   --amber-50: #451a03;
@@ -230,6 +232,7 @@
   --color-red-500: var(--red-500);
   --color-red-600: var(--red-600);
   --color-red-650: var(--red-650);
+  --color-red-655: var(--red-655);
   --color-red-955: var(--red-955);
 
   --color-amber-50: var(--amber-50);
@@ -279,14 +282,12 @@
   preventing white-on-white text invisibility in buttons.
 */
 .dark .bg-indigo-650,
-.dark .bg-indigo-700,
 .dark .bg-indigo-750,
 .dark .bg-indigo-755 {
   color: #09090b !important;
 }
 
 .dark .bg-indigo-650 *,
-.dark .bg-indigo-700 *,
 .dark .bg-indigo-750 *,
 .dark .bg-indigo-755 * {
   color: #09090b !important;
@@ -326,3 +327,78 @@
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
 }
+
+/* Self-healing interactive hover overrides for dark mode */
+.dark .hover\:bg-slate-50:hover {
+  background-color: var(--slate-800) !important;
+}
+.dark .hover\:bg-slate-100:hover {
+  background-color: var(--slate-800) !important;
+}
+.dark .hover\:bg-slate-200:hover {
+  background-color: var(--slate-800) !important;
+}
+.dark .hover\:bg-slate-300:hover {
+  background-color: var(--slate-800) !important;
+}
+.dark .hover\:bg-slate-50\/50:hover {
+  background-color: var(--slate-850) !important;
+}
+.dark .hover\:bg-slate-50\/40:hover {
+  background-color: var(--slate-850) !important;
+}
+.dark .hover\:bg-indigo-50:hover {
+  background-color: var(--slate-800) !important;
+}
+.dark .hover\:bg-indigo-100:hover {
+  background-color: var(--slate-800) !important;
+}
+.dark .hover\:text-slate-900:hover {
+  color: #ffffff !important;
+}
+.dark tr.hover\:bg-slate-50\/50:hover {
+  background-color: var(--slate-850) !important;
+}
+.dark tr.hover\:bg-slate-50:hover {
+  background-color: var(--slate-850) !important;
+}
+
+/* Red / Delete hover states */
+.dark .hover\:bg-red-50:hover {
+  background-color: var(--red-955) !important;
+  color: #f87171 !important;
+}
+.dark .hover\:bg-red-100:hover {
+  background-color: var(--red-955) !important;
+  color: #f87171 !important;
+}
+.dark .hover\:bg-red-200:hover {
+  background-color: var(--red-955) !important;
+  color: #f87171 !important;
+}
+
+/* Force inner icons/crossmarks to remain visible on hover in dark mode */
+.dark .hover\:bg-red-50:hover *,
+.dark .hover\:bg-red-100:hover *,
+.dark .hover\:bg-red-200:hover * {
+  color: #f87171 !important;
+  stroke: #f87171 !important;
+}
+
+.dark .hover\:bg-slate-50:hover *,
+.dark .hover\:bg-slate-100:hover *,
+.dark .hover\:bg-slate-200:hover *,
+.dark .hover\:bg-slate-300:hover * {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+/* Force white active badges in dark mode sidebar to keep dark text color */
+.dark .rounded-full.bg-white {
+  color: #09090b !important;
+}
+.dark .rounded-full.bg-white * {
+  color: #09090b !important;
+}
+
+

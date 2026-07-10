@@ -217,7 +217,7 @@ export default function VisitorManagement() {
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all whitespace-nowrap cursor-pointer ${
                   filterStatus === status
                     ? 'bg-indigo-650 text-white border-indigo-650'
-                    : 'bg-white dark:bg-slate-900 text-slate-650 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50'
+                    : 'bg-white dark:bg-slate-900 text-slate-650 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
                 }`}
               >
                 {status}
@@ -249,7 +249,7 @@ export default function VisitorManagement() {
                 </tr>
               ) : (
                 filteredVisitors.map((vis) => (
-                  <tr key={vis.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-900/10 transition-colors">
+                  <tr key={vis.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="px-6 py-4">
                       <div>
                         <p className="font-bold text-slate-900 dark:text-white">{vis.visitorName}</p>
