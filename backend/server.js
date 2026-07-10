@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 import syncRouter from './routes/syncRoute.js';
 import authRouter from './routes/authRoute.js';
 import dataRouter from './routes/dataRoute.js';
+import path from "path";
+import { fileURLToPath } from "url";
 
 // Trigger restart to load updated .env credentials (attempt 4)
 dotenv.config();
@@ -14,39 +16,39 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+// app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Allow large payloads since syncing sends entire collections
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 let isConnected = false;
 let dbError = null;
 
-const connectDb = async () => {
-  const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/pg-management';
-  console.log(`Connecting to MongoDB at: ${mongoUri}...`);
-  try {
-    await mongoose.connect(mongoUri);
-    isConnected = true;
-    dbError = null;
-    console.log('Successfully connected to MongoDB.');
-  } catch (error) {
-    isConnected = false;
-    dbError = error.message;
-    console.error('Failed to connect to MongoDB:', error.message);
-    console.log('Retrying connection in 5 seconds...');
-    setTimeout(connectDb, 5000);
-  }
+const connectDb = async() => {
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/pg-management';
+    console.log(`Connecting to MongoDB at: ${mongoUri}...`);
+    try {
+        await mongoose.connect(mongoUri);
+        isConnected = true;
+        dbError = null;
+        console.log('Successfully connected to MongoDB.');
+    } catch (error) {
+        isConnected = false;
+        dbError = error.message;
+        console.error('Failed to connect to MongoDB:', error.message);
+        console.log('Retrying connection in 5 seconds...');
+        setTimeout(connectDb, 5000);
+    }
 };
 
 // Middleware to check database connection status
 app.use((req, res, next) => {
-  if (!isConnected && req.path.startsWith('/api/sync')) {
-    return res.status(503).json({
-      success: false,
-      error: `Database is offline. Detail: ${dbError || 'Establishing connection...'}`
-    });
-  }
-  next();
+    if (!isConnected && req.path.startsWith('/api/sync')) {
+        return res.status(503).json({
+            success: false,
+            error: `Database is offline. Detail: ${dbError || 'Establishing connection...'}`
+        });
+    }
+    next();
 });
 
 // Routes
@@ -55,15 +57,30 @@ app.use('/api/auth', authRouter);
 app.use('/api', dataRouter);
 
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: isConnected ? 'UP' : 'DEGRADED', 
-    database: isConnected ? 'CONNECTED' : 'DISCONNECTED',
-    error: dbError,
-    timestamp: new Date() 
-  });
+    res.json({
+        status: isConnected ? 'UP' : 'DEGRADED',
+        database: isConnected ? 'CONNECTED' : 'DISCONNECTED',
+        error: dbError,
+        timestamp: new Date()
+    });
 });
+const __filename = fileURLToPath(
+    import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const frontendPath = path.join(__dirname, "../PG-Management/dist");
+import fs from "fs";
+
+console.log("Frontend Path:", frontendPath);
+console.log("Exists:", fs.existsSync(frontendPath));
+
+app.use(express.static(frontendPath));
+
+app.get("*", (req, res) => {
+    res.sendFile(path.join(frontendPath, "index.html"));
+});
+await connectDb();
 
 app.listen(PORT, () => {
-  console.log(`Backend server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
-  connectDb();
+    console.log(`Server running on port ${PORT}`);
 });
