@@ -1,19 +1,51 @@
-import React, { useState } from 'react';
-import { db } from '../../data/mockData';
-import { Check, X, Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import client from '../../api/client';
+import { Check, X, Calendar, AlertCircle } from 'lucide-react';
 
 export const LeaveManagement = () => {
-  const [leaves, setLeaves] = useState(() => db.getLeaves());
+  const [leaves, setLeaves] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleStatusUpdate = (leaveId, newStatus) => {
-    const updated = leaves.map(l => {
-      if (l.id === leaveId) {
-        return { ...l, status: newStatus };
-      }
-      return l;
-    });
-    setLeaves(updated);
-    db.saveLeaves(updated);
+  const fetchLeaves = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await client.get('/leaves');
+      setLeaves(response.data.data);
+    } catch (err) {
+      console.error('Failed to load leaves:', err);
+      setError('Failed to fetch outpass requests.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLeaves();
+  }, []);
+
+  const handleStatusUpdate = async (leaveId, newStatus) => {
+    setError(null);
+    try {
+      const leavesRes = await client.get('/leaves');
+      const target = leavesRes.data.data.find(l => l.id === leaveId);
+      if (!target) return;
+
+      const updatedLeave = { ...target, status: newStatus };
+      await client.put(`/leaves/${leaveId}`, updatedLeave);
+
+      const updated = leaves.map(l => {
+        if (l.id === leaveId) {
+          return { ...l, status: newStatus };
+        }
+        return l;
+      });
+      setLeaves(updated);
+    } catch (err) {
+      console.error('Failed to update leave status:', err);
+      setError('Failed to update leave request status.');
+    }
   };
 
   return (
@@ -22,6 +54,13 @@ export const LeaveManagement = () => {
         <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Student Leaves & Gate Passes</h1>
         <p className="text-xs text-slate-500 font-medium">Review and process out-of-station checkouts and check-in range applications.</p>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-slate-955 rounded-2xl border border-slate-200 dark:border-slate-850 shadow-sm overflow-hidden transition-colors">
         <div className="overflow-x-auto">

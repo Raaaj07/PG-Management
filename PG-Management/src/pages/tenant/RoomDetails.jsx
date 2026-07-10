@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { Home, Users, Clock, AlertTriangle, ShieldCheck, Mail, Phone, Layers, Bed } from 'lucide-react';
+import { Home, Users, Clock, AlertTriangle, ShieldCheck, Mail, Phone, Layers, Bed, AlertCircle } from 'lucide-react';
 
 const ROOM_IMAGES = {
   '101': 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=600&auto=format&fit=crop&q=60',
@@ -20,20 +20,40 @@ export default function RoomDetails() {
   const [allUsers, setAllUsers] = useState([]);
   const [hostelInfo, setHostelInfo] = useState(null);
   const [allRooms, setAllRooms] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [roomsRes, usersRes, hostelsRes] = await Promise.all([
+        client.get('/rooms'),
+        client.get('/users'),
+        client.get('/hostels')
+      ]);
+
+      const rooms = roomsRes.data.data;
+      setAllRooms(rooms);
+      const myRoom = rooms.find(r => r.id === user.roomId || r.roomNo === user.roomNo);
+      setRoom(myRoom);
+
+      setAllUsers(usersRes.data.data);
+
+      const myHostel = hostelsRes.data.data.find(h => h.id === user.hostelId);
+      setHostelInfo(myHostel);
+    } catch (err) {
+      console.error('Failed to load room details info:', err);
+      setError('Failed to load room configuration and details.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const rooms = db.getRooms();
-    setAllRooms(rooms);
-    const myRoom = rooms.find(r => r.id === user.roomId || r.roomNo === user.roomNo);
-    setRoom(myRoom);
-
-    const users = db.getUsers();
-    setAllUsers(users);
-
-    // Find hostel rules and curfew
-    const allHostels = db.getHostels();
-    const myHostel = allHostels.find(h => h.id === user.hostelId);
-    setHostelInfo(myHostel);
+    if (user) {
+      fetchData();
+    }
   }, [user]);
 
   // Total vacant beds in the hostel
@@ -64,6 +84,13 @@ export default function RoomDetails() {
           Check roommate logs, property curfew parameters, and details for room {room?.roomNo || 'N/A'}.
         </p>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Side: Room details card */}

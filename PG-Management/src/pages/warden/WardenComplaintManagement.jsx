@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { ShieldAlert, Search, Filter, Clock, CheckCircle2, MessageSquare, Save, X } from 'lucide-react';
+import { ShieldAlert, Search, Filter, Clock, CheckCircle2, MessageSquare, Save, X, AlertCircle } from 'lucide-react';
 
 export default function WardenComplaintManagement() {
   const { user } = useAuth();
   const [complaints, setComplaints] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   // Selected complaint for action modal
   const [selectedComp, setSelectedComp] = useState(null);
@@ -16,14 +18,33 @@ export default function WardenComplaintManagement() {
     reply: ''
   });
 
-  useEffect(() => {
-    // Load complaints for warden's hostel students
-    const allComplaints = db.getComplaints();
-    const students = db.getUsers().filter(u => u.role === 'student' && u.hostelId === user.hostelId);
-    const studentIds = students.map(s => s.id);
+  const fetchComplaints = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [complaintsRes, usersRes] = await Promise.all([
+        client.get('/complaints'),
+        client.get('/users')
+      ]);
 
-    const hostelComplaints = allComplaints.filter(c => studentIds.includes(c.studentId));
-    setComplaints(hostelComplaints);
+      const allComplaints = complaintsRes.data.data;
+      const students = usersRes.data.data.filter(u => u.role === 'student' && u.hostelId === user.hostelId);
+      const studentIds = students.map(s => s.id);
+
+      const hostelComplaints = allComplaints.filter(c => studentIds.includes(c.studentId));
+      setComplaints(hostelComplaints);
+    } catch (err) {
+      console.error('Failed to load complaints:', err);
+      setError('Failed to load complaints list.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchComplaints();
+    }
   }, [user]);
 
   const handleOpenActionModal = (comp) => {
@@ -34,29 +55,28 @@ export default function WardenComplaintManagement() {
     });
   };
 
-  const handleSaveAction = (e) => {
+  const handleSaveAction = async (e) => {
     e.preventDefault();
     if (!selectedComp) return;
+    setError(null);
 
-    // Update state
-    const updated = complaints.map(c => {
-      if (c.id === selectedComp.id) {
-        return { ...c, status: actionForm.status, reply: actionForm.reply };
-      }
-      return c;
-    });
-    setComplaints(updated);
+    try {
+      const updatedComp = { ...selectedComp, status: actionForm.status, reply: actionForm.reply };
+      await client.put(`/complaints/${selectedComp.id}`, updatedComp);
 
-    // Save to global storage
-    const allComplaints = db.getComplaints();
-    const idx = allComplaints.findIndex(c => c.id === selectedComp.id);
-    if (idx !== -1) {
-      allComplaints[idx].status = actionForm.status;
-      allComplaints[idx].reply = actionForm.reply;
-      db.saveComplaints(allComplaints);
+      // Update state
+      const updated = complaints.map(c => {
+        if (c.id === selectedComp.id) {
+          return { ...c, status: actionForm.status, reply: actionForm.reply };
+        }
+        return c;
+      });
+      setComplaints(updated);
+      setSelectedComp(null);
+    } catch (err) {
+      console.error('Failed to resolve complaint:', err);
+      setError('Failed to update complaint resolution status.');
     }
-
-    setSelectedComp(null);
   };
 
   const filteredComplaints = complaints.filter(c => {
@@ -79,6 +99,13 @@ export default function WardenComplaintManagement() {
           Review, assign maintenance tasks, and resolve tickets submitted by residents of {user?.hostelName}.
         </p>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Stats Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

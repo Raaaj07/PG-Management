@@ -1,81 +1,107 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { FileText, Download, Filter, Home, Wallet, ShieldAlert, BarChart3 } from 'lucide-react';
+import { FileText, Download, Filter, Home, Wallet, ShieldAlert, BarChart3, AlertCircle } from 'lucide-react';
 
 export default function Reports() {
   const { user } = useAuth();
   const [reportType, setReportType] = useState('occupancy');
   const [reportData, setReportData] = useState([]);
   const [summaryStats, setSummaryStats] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Query local database based on selected report type
-    if (reportType === 'occupancy') {
-      const rooms = db.getRooms().filter(r => r.hostelId === user.hostelId);
-      const students = db.getUsers().filter(u => u.role === 'student' && u.hostelId === user.hostelId);
-      
-      const tableData = rooms.map(room => {
-        const roomStudents = students.filter(s => s.roomId === room.id);
-        return {
-          id: room.id,
-          roomNo: room.roomNo,
-          type: room.type,
-          floor: room.floor,
-          rent: room.rent,
-          occupancy: `${room.occupied} / ${room.capacity}`,
-          occupants: roomStudents.map(s => s.name).join(', ') || 'None',
-          status: room.occupied === 0 ? 'Empty' : room.occupied === room.capacity ? 'Fully Booked' : 'Partially Booked'
-        };
-      });
-      setReportData(tableData);
+    const fetchReport = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [roomsRes, usersRes, feesRes, complaintsRes] = await Promise.all([
+          client.get('/rooms'),
+          client.get('/users'),
+          client.get('/fees'),
+          client.get('/complaints')
+        ]);
 
-      const totalCap = rooms.reduce((sum, r) => sum + r.capacity, 0);
-      const totalOcc = rooms.reduce((sum, r) => sum + r.occupied, 0);
-      setSummaryStats({
-        title1: 'Total Rooms', val1: rooms.length,
-        title2: 'Total Capacity', val2: totalCap,
-        title3: 'Occupied Beds', val3: totalOcc,
-        title4: 'Occupancy Rate', val4: totalCap ? `${Math.round((totalOcc / totalCap) * 100)}%` : '0%'
-      });
-    } else if (reportType === 'financial') {
-      const fees = db.getFees();
-      const students = db.getUsers().filter(u => u.role === 'student' && u.hostelId === user.hostelId);
-      const studentIds = students.map(s => s.id);
-      
-      // Filter fees belonging to student of this hostel
-      const hostelFees = fees.filter(f => studentIds.includes(f.studentId));
-      
-      setReportData(hostelFees);
+        const roomsData = roomsRes.data.data;
+        const usersData = usersRes.data.data;
+        const feesData = feesRes.data.data;
+        const complaintsData = complaintsRes.data.data;
 
-      const paidAmount = hostelFees.filter(f => f.status === 'Paid').reduce((sum, f) => sum + f.amount, 0);
-      const unpaidAmount = hostelFees.filter(f => f.status === 'Unpaid').reduce((sum, f) => sum + f.amount, 0);
-      const pendingAmount = hostelFees.filter(f => f.status === 'Pending Review').reduce((sum, f) => sum + f.amount, 0);
+        if (reportType === 'occupancy') {
+          const rooms = roomsData.filter(r => r.hostelId === user.hostelId);
+          const students = usersData.filter(u => u.role === 'student' && u.hostelId === user.hostelId);
+          
+          const tableData = rooms.map(room => {
+            const roomStudents = students.filter(s => s.roomId === room.id);
+            return {
+              id: room.id,
+              roomNo: room.roomNo,
+              type: room.type,
+              floor: room.floor,
+              rent: room.rent,
+              occupancy: `${room.occupied} / ${room.capacity}`,
+              occupants: roomStudents.map(s => s.name).join(', ') || 'None',
+              status: room.occupied === 0 ? 'Empty' : room.occupied === room.capacity ? 'Fully Booked' : 'Partially Booked'
+            };
+          });
+          setReportData(tableData);
 
-      setSummaryStats({
-        title1: 'Total Invoiced', val1: `₹${paidAmount + unpaidAmount + pendingAmount}`,
-        title2: 'Rent Collected', val2: `₹${paidAmount}`,
-        title3: 'Outstanding Due', val3: `₹${unpaidAmount}`,
-        title4: 'Pending Verification', val4: `₹${pendingAmount}`
-      });
-    } else if (reportType === 'complaints') {
-      const complaints = db.getComplaints();
-      const students = db.getUsers().filter(u => u.role === 'student' && u.hostelId === user.hostelId);
-      const studentIds = students.map(s => s.id);
-      
-      const hostelComplaints = complaints.filter(c => studentIds.includes(c.studentId));
-      setReportData(hostelComplaints);
+          const totalCap = rooms.reduce((sum, r) => sum + r.capacity, 0);
+          const totalOcc = rooms.reduce((sum, r) => sum + r.occupied, 0);
+          setSummaryStats({
+            title1: 'Total Rooms', val1: rooms.length,
+            title2: 'Total Capacity', val2: totalCap,
+            title3: 'Occupied Beds', val3: totalOcc,
+            title4: 'Occupancy Rate', val4: totalCap ? `${Math.round((totalOcc / totalCap) * 100)}%` : '0%'
+          });
+        } else if (reportType === 'financial') {
+          const fees = feesData;
+          const students = usersData.filter(u => u.role === 'student' && u.hostelId === user.hostelId);
+          const studentIds = students.map(s => s.id);
+          
+          const hostelFees = fees.filter(f => studentIds.includes(f.studentId));
+          setReportData(hostelFees);
 
-      const resolved = hostelComplaints.filter(c => c.status === 'Resolved').length;
-      const pending = hostelComplaints.filter(c => c.status === 'Pending').length;
-      const inProgress = hostelComplaints.filter(c => c.status === 'In Progress').length;
+          const paidAmount = hostelFees.filter(f => f.status === 'Paid').reduce((sum, f) => sum + f.amount, 0);
+          const unpaidAmount = hostelFees.filter(f => f.status === 'Unpaid').reduce((sum, f) => sum + f.amount, 0);
+          const pendingAmount = hostelFees.filter(f => f.status === 'Pending Review').reduce((sum, f) => sum + f.amount, 0);
 
-      setSummaryStats({
-        title1: 'Total Tickets', val1: hostelComplaints.length,
-        title2: 'Pending Tickets', val2: pending,
-        title3: 'In-Progress Tickets', val3: inProgress,
-        title4: 'Resolution Rate', val4: hostelComplaints.length ? `${Math.round((resolved / hostelComplaints.length) * 100)}%` : '0%'
-      });
+          setSummaryStats({
+            title1: 'Total Invoiced', val1: `₹${paidAmount + unpaidAmount + pendingAmount}`,
+            title2: 'Rent Collected', val2: `₹${paidAmount}`,
+            title3: 'Outstanding Due', val3: `₹${unpaidAmount}`,
+            title4: 'Pending Verification', val4: `₹${pendingAmount}`
+          });
+        } else if (reportType === 'complaints') {
+          const complaints = complaintsData;
+          const students = usersData.filter(u => u.role === 'student' && u.hostelId === user.hostelId);
+          const studentIds = students.map(s => s.id);
+          
+          const hostelComplaints = complaints.filter(c => studentIds.includes(c.studentId));
+          setReportData(hostelComplaints);
+
+          const resolved = hostelComplaints.filter(c => c.status === 'Resolved').length;
+          const pending = hostelComplaints.filter(c => c.status === 'Pending').length;
+          const inProgress = hostelComplaints.filter(c => c.status === 'In Progress').length;
+
+          setSummaryStats({
+            title1: 'Total Tickets', val1: hostelComplaints.length,
+            title2: 'Pending Tickets', val2: pending,
+            title3: 'In-Progress Tickets', val3: inProgress,
+            title4: 'Resolution Rate', val4: hostelComplaints.length ? `${Math.round((resolved / hostelComplaints.length) * 100)}%` : '0%'
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load reports stats:', err);
+        setError('Failed to fetch statistics and report details.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchReport();
     }
   }, [reportType, user]);
 
@@ -150,6 +176,13 @@ export default function Reports() {
           <Download className="w-4 h-4" /> Export CSV Data
         </button>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Select Report Category */}
       <div className="bg-white dark:bg-slate-955 p-4 border border-slate-200 dark:border-slate-850 rounded-2xl flex flex-wrap gap-3 items-center">

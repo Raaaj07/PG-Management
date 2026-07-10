@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { 
   Building, ShieldCheck, Zap, Users, ChevronRight, Star, 
   Wifi, Coffee, Flame, HeartHandshake, Eye, MapPin, Clock 
@@ -17,16 +17,28 @@ export const LandingPage = () => {
   const [rooms, setRooms] = useState([]);
 
   useEffect(() => {
-    const hostels = db.getHostels();
-    if (hostels && hostels.length > 0) {
-      setPgInfo({
-        name: hostels[0].name,
-        address: hostels[0].address,
-        curfewTime: hostels[0].curfewTime || '10:00 PM',
-        type: hostels[0].type || 'PG'
-      });
-    }
-    setRooms(db.getRooms());
+    const fetchLandingData = async () => {
+      try {
+        const [hostelsRes, roomsRes] = await Promise.all([
+          client.get('/hostels'),
+          client.get('/rooms')
+        ]);
+
+        const hostels = hostelsRes.data.data;
+        if (hostels && hostels.length > 0) {
+          setPgInfo({
+            name: hostels[0].name,
+            address: hostels[0].address,
+            curfewTime: hostels[0].curfewTime || '10:00 PM',
+            type: hostels[0].type || 'PG'
+          });
+        }
+        setRooms(roomsRes.data.data);
+      } catch (err) {
+        console.error('Failed to load landing page data:', err);
+      }
+    };
+    fetchLandingData();
   }, []);
 
   const amenities = [

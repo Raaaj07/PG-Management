@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { db } from '../data/mockData';
+import client from '../api/client';
 import {
   Menu, X, Sun, Moon, LogOut, Bell, Search, ChevronDown, User, Settings,
   LayoutDashboard, Building, Users, Settings2, ShieldCheck,
@@ -22,48 +22,110 @@ export const DashboardLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Fetch PG name
-  useEffect(() => {
-    const hostels = db.getHostels();
-    if (hostels && hostels.length > 0) {
-      setPgName(hostels[0].name);
-    }
-  }, []);
+  const [sidebarMenu, setSidebarMenu] = useState([]);
 
-  // Load context-aware notifications (e.g. pending items)
+  // Fetch PG name and layout analytics
   useEffect(() => {
     if (!user) return;
-    
-    let list = [];
-    if (user.role === 'hostel-admin') {
-      const openComplaints = db.getComplaints().filter(c => c.status === 'Pending');
-      const pendingReviewFees = db.getFees().filter(f => f.status === 'Pending Review');
-      openComplaints.forEach(c => {
-        list.push({ id: `c-${c.id}`, title: 'New Complaint', desc: `${c.studentName}: ${c.title}`, time: '30m ago' });
-      });
-      pendingReviewFees.forEach(f => {
-        list.push({ id: `f-${f.id}`, title: 'Fee Review Request', desc: `${f.studentName} paid for ${f.month}.`, time: '1h ago' });
-      });
-    } else if (user.role === 'warden') {
-      const pendingLeaves = db.getLeaves().filter(l => l.status === 'Pending');
-      const activeVisitors = db.getVisitors().filter(v => v.status === 'Checked In');
-      pendingLeaves.forEach(l => {
-        list.push({ id: `l-${l.id}`, title: 'Leave Application', desc: `${l.studentName} requested leave.`, time: '15m ago' });
-      });
-      activeVisitors.forEach(v => {
-        list.push({ id: `v-${v.id}`, title: 'Visitor On-Site', desc: `${v.visitorName} is in Room ${v.roomNo}.`, time: 'Now' });
-      });
-    } else if (user.role === 'student') {
-      const notices = db.getNotices().filter(n => n.target === 'All' || n.target === 'Students').slice(0, 2);
-      const myFeePending = db.getFees().filter(f => f.studentId === user.id && f.status === 'Unpaid');
-      notices.forEach(n => {
-        list.push({ id: `n-${n.id}`, title: 'New Notice Board Post', desc: n.title, time: '2h ago' });
-      });
-      myFeePending.forEach(f => {
-        list.push({ id: `sf-${f.id}`, title: 'Pending Fee Alert', desc: `Rent invoice of $${f.amount} for ${f.month} is due.`, time: '1d ago' });
-      });
-    }
-    setNotificationsList(list);
+
+    const fetchLayoutData = async () => {
+      try {
+        const [hostelsRes, complaintsRes, feesRes, leavesRes, visitorsRes, noticesRes] = await Promise.all([
+          client.get('/hostels'),
+          client.get('/complaints'),
+          client.get('/fees'),
+          client.get('/leaves'),
+          client.get('/visitors'),
+          client.get('/notices')
+        ]);
+
+        const hostels = hostelsRes.data.data;
+        if (hostels && hostels.length > 0) {
+          setPgName(hostels[0].name);
+        }
+
+        const allComplaints = complaintsRes.data.data;
+        const allFees = feesRes.data.data;
+        const allLeaves = leavesRes.data.data;
+        const allVisitors = visitorsRes.data.data;
+        const allNotices = noticesRes.data.data;
+
+        // Build notifications list
+        let list = [];
+        if (user.role === 'hostel-admin') {
+          const openComplaints = allComplaints.filter(c => c.status === 'Pending');
+          const pendingReviewFees = allFees.filter(f => f.status === 'Pending Review');
+          openComplaints.forEach(c => {
+            list.push({ id: `c-${c.id}`, title: 'New Complaint', desc: `${c.studentName}: ${c.title}`, time: '30m ago' });
+          });
+          pendingReviewFees.forEach(f => {
+            list.push({ id: `f-${f.id}`, title: 'Fee Review Request', desc: `${f.studentName} paid for ${f.month}.`, time: '1h ago' });
+          });
+        } else if (user.role === 'warden') {
+          const pendingLeaves = allLeaves.filter(l => l.status === 'Pending');
+          const activeVisitors = allVisitors.filter(v => v.status === 'Checked In');
+          pendingLeaves.forEach(l => {
+            list.push({ id: `l-${l.id}`, title: 'Leave Application', desc: `${l.studentName} requested leave.`, time: '15m ago' });
+          });
+          activeVisitors.forEach(v => {
+            list.push({ id: `v-${v.id}`, title: 'Visitor On-Site', desc: `${v.visitorName} is in Room ${v.roomNo}.`, time: 'Now' });
+          });
+        } else if (user.role === 'student') {
+          const notices = allNotices.filter(n => n.target === 'All' || n.target === 'Students').slice(0, 2);
+          const myFeePending = allFees.filter(f => f.studentId === user.id && f.status === 'Unpaid');
+          notices.forEach(n => {
+            list.push({ id: `n-${n.id}`, title: 'New Notice Board Post', desc: n.title, time: '2h ago' });
+          });
+          myFeePending.forEach(f => {
+            list.push({ id: `sf-${f.id}`, title: 'Pending Fee Alert', desc: `Rent invoice of ₹${f.amount} for ${f.month} is due.`, time: '1d ago' });
+          });
+        }
+        setNotificationsList(list);
+
+        // Build sidebar menu
+        let menu = [];
+        if (user.role === 'hostel-admin') {
+          menu = [
+            { name: 'Dashboard', path: '/hostel-admin', icon: LayoutDashboard },
+            { name: 'Tenant Management', path: '/hostel-admin/tenants', icon: Users },
+            { name: 'Room Management', path: '/hostel-admin/rooms', icon: Home },
+            { name: 'Room Allocation', path: '/hostel-admin/allocations', icon: UserCheck },
+            { name: 'Fee Management', path: '/hostel-admin/fees', icon: Wallet, badge: allFees.filter(f => f.status === 'Pending Review').length },
+            { name: 'Complaint Management', path: '/hostel-admin/complaints', icon: ShieldAlert, badge: allComplaints.filter(c => c.status === 'Pending').length },
+            { name: 'Leave Management', path: '/hostel-admin/leaves', icon: CalendarRange },
+            { name: 'Visitor Management', path: '/hostel-admin/visitors', icon: DoorOpen },
+            { name: 'Notice Board', path: '/hostel-admin/notices', icon: Pin },
+            { name: 'Reports', path: '/hostel-admin/reports', icon: FileSpreadsheet },
+            { name: 'PG Profile Settings', path: '/hostel-admin/settings', icon: Settings2 },
+          ];
+        } else if (user.role === 'warden') {
+          menu = [
+            { name: 'Dashboard', path: '/warden', icon: LayoutDashboard },
+            { name: 'Tenant Monitoring', path: '/warden/tenants', icon: Users },
+            { name: 'Complaint Box', path: '/warden/complaints', icon: ShieldAlert, badge: allComplaints.filter(c => c.status === 'Pending').length },
+            { name: 'Leave Approvals', path: '/warden/leaves', icon: CalendarRange, badge: allLeaves.filter(l => l.status === 'Pending').length },
+            { name: 'Visitor Tracking', path: '/warden/visitors', icon: DoorOpen, badge: allVisitors.filter(v => v.status === 'Checked In').length },
+            { name: 'Notifications', path: '/warden/notifications', icon: BellRing },
+          ];
+        } else if (user.role === 'student') {
+          menu = [
+            { name: 'Dashboard', path: '/tenant', icon: LayoutDashboard },
+            { name: 'Room Details', path: '/tenant/room', icon: Home },
+            { name: 'Fee Status', path: '/tenant/fees', icon: Wallet, badge: allFees.filter(f => f.studentId === user.id && f.status === 'Unpaid').length },
+            { name: 'Complaint Box', path: '/tenant/complaints', icon: ShieldAlert },
+            { name: 'Leave Application', path: '/tenant/leaves', icon: CalendarRange },
+            { name: 'Notice Board', path: '/tenant/notices', icon: Pin },
+            { name: 'Visitor Requests', path: '/tenant/visitors', icon: DoorOpen },
+            { name: 'Profile Details', path: '/tenant/profile', icon: User },
+          ];
+        }
+        setSidebarMenu(menu);
+      } catch (err) {
+        console.error('Failed to load dashboard layout data:', err);
+      }
+    };
+
+    fetchLayoutData();
   }, [user, location.pathname]);
 
   const handleLogout = () => {
@@ -71,47 +133,7 @@ export const DashboardLayout = () => {
     navigate('/login');
   };
 
-  // Get Sidebar menu config based on role
-  const getSidebarMenu = () => {
-    switch (user?.role) {
-      case 'hostel-admin':
-        return [
-          { name: 'Dashboard', path: '/hostel-admin', icon: LayoutDashboard },
-          { name: 'Tenant Management', path: '/hostel-admin/tenants', icon: Users },
-          { name: 'Room Management', path: '/hostel-admin/rooms', icon: Home },
-          { name: 'Room Allocation', path: '/hostel-admin/allocations', icon: UserCheck },
-          { name: 'Fee Management', path: '/hostel-admin/fees', icon: Wallet, badge: db.getFees().filter(f => f.status === 'Pending Review').length },
-          { name: 'Complaint Management', path: '/hostel-admin/complaints', icon: ShieldAlert, badge: db.getComplaints().filter(c => c.status === 'Pending').length },
-          { name: 'Leave Management', path: '/hostel-admin/leaves', icon: CalendarRange },
-          { name: 'Visitor Management', path: '/hostel-admin/visitors', icon: DoorOpen },
-          { name: 'Notice Board', path: '/hostel-admin/notices', icon: Pin },
-          { name: 'Reports', path: '/hostel-admin/reports', icon: FileSpreadsheet },
-          { name: 'PG Profile Settings', path: '/hostel-admin/settings', icon: Settings2 },
-        ];
-      case 'warden':
-        return [
-          { name: 'Dashboard', path: '/warden', icon: LayoutDashboard },
-          { name: 'Tenant Monitoring', path: '/warden/tenants', icon: Users },
-          { name: 'Complaint Box', path: '/warden/complaints', icon: ShieldAlert, badge: db.getComplaints().filter(c => c.status === 'Pending').length },
-          { name: 'Leave Approvals', path: '/warden/leaves', icon: CalendarRange, badge: db.getLeaves().filter(l => l.status === 'Pending').length },
-          { name: 'Visitor Tracking', path: '/warden/visitors', icon: DoorOpen, badge: db.getVisitors().filter(v => v.status === 'Checked In').length },
-          { name: 'Notifications', path: '/warden/notifications', icon: BellRing },
-        ];
-      case 'student':
-        return [
-          { name: 'Dashboard', path: '/tenant', icon: LayoutDashboard },
-          { name: 'Room Details', path: '/tenant/room', icon: Home },
-          { name: 'Fee Status', path: '/tenant/fees', icon: Wallet, badge: db.getFees().filter(f => f.studentId === user.id && f.status === 'Unpaid').length },
-          { name: 'Complaint Box', path: '/tenant/complaints', icon: ShieldAlert },
-          { name: 'Leave Application', path: '/tenant/leaves', icon: CalendarRange },
-          { name: 'Notice Board', path: '/tenant/notices', icon: Pin },
-          { name: 'Visitor Requests', path: '/tenant/visitors', icon: DoorOpen },
-          { name: 'Profile Details', path: '/tenant/profile', icon: User },
-        ];
-      default:
-        return [];
-    }
-  };
+  const getSidebarMenu = () => sidebarMenu;
 
   const menuItems = getSidebarMenu();
   const isActive = (path) => {

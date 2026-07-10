@@ -4,6 +4,8 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import syncRouter from './routes/syncRoute.js';
+import authRouter from './routes/authRoute.js';
+import dataRouter from './routes/dataRoute.js';
 
 // Trigger restart to load updated .env credentials (attempt 4)
 dotenv.config();
@@ -49,6 +51,8 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/api/sync', syncRouter);
+app.use('/api/auth', authRouter);
+app.use('/api', dataRouter);
 
 app.get('/health', (req, res) => {
   res.json({ 

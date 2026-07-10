@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { DoorOpen, Plus, Search, Calendar, QrCode, CheckCircle, X } from 'lucide-react';
+import { DoorOpen, Plus, Search, Calendar, QrCode, CheckCircle, X, AlertCircle } from 'lucide-react';
 
 export default function VisitorRequests() {
   const { user } = useAuth();
   const [visitors, setVisitors] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   // Active gate pass modal view
   const [activePass, setActivePass] = useState(null);
@@ -19,16 +21,31 @@ export default function VisitorRequests() {
   });
   const [successMsg, setSuccessMsg] = useState('');
 
+  const fetchVisitors = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await client.get('/visitors');
+      const mine = response.data.data.filter(v => v.studentId === user.id);
+      setVisitors(mine);
+    } catch (err) {
+      console.error('Failed to load visitors list:', err);
+      setError('Failed to fetch visitor pass history.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Load student's visitors
-    const all = db.getVisitors();
-    const mine = all.filter(v => v.studentId === user.id);
-    setVisitors(mine);
+    if (user) {
+      fetchVisitors();
+    }
   }, [user]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!newRequest.visitorName || !newRequest.relation || !newRequest.date) return;
+    setError(null);
 
     const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -46,21 +63,23 @@ export default function VisitorRequests() {
       status: 'Checked In' // Direct check-in to simulate arrival
     };
 
-    const updated = [newGuest, ...visitors];
-    setVisitors(updated);
-
-    // Save to master db
-    const all = db.getVisitors();
-    all.unshift(newGuest);
-    db.saveVisitors(all);
-
-    setNewRequest({ visitorName: '', relation: '', date: '', purpose: '' });
-    setIsModalOpen(false);
-    
-    // Auto show gate pass
-    setActivePass(newGuest);
-    setSuccessMsg('Guest pre-registered! Gate pass generated.');
-    setTimeout(() => setSuccessMsg(''), 4000);
+    setLoading(true);
+    try {
+      await client.post('/visitors', newGuest);
+      setVisitors([newGuest, ...visitors]);
+      setNewRequest({ visitorName: '', relation: '', date: '', purpose: '' });
+      setIsModalOpen(false);
+      
+      // Auto show gate pass
+      setActivePass(newGuest);
+      setSuccessMsg('Guest pre-registered! Gate pass generated.');
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err) {
+      console.error('Failed to pre-register guest:', err);
+      setError('Failed to submit visitor gate pass request.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -86,6 +105,13 @@ export default function VisitorRequests() {
         <div className="p-4 bg-emerald-50 dark:bg-emerald-955/35 text-emerald-650 dark:text-emerald-450 border border-emerald-250/50 dark:border-emerald-900/30 rounded-xl text-xs font-bold flex items-center gap-2">
           <CheckCircle className="w-4.5 h-4.5" />
           <span>{successMsg}</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
         </div>
       )}
 

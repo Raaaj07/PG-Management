@@ -1,38 +1,59 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { db } from '../data/mockData';
+import client from '../api/client';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('auth_user');
-    return saved ? JSON.parse(saved) : null;
-  });
-
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Authenticate user against mock database
+  // Validate session on application mount
+  useEffect(() => {
+    const restoreSession = async () => {
+      const token = localStorage.getItem('auth_token');
+      if (token) {
+        try {
+          const response = await client.get('/auth/me');
+          if (response.data && response.data.success) {
+            setUser(response.data.user);
+            localStorage.setItem('auth_user', JSON.stringify(response.data.user));
+          } else {
+            throw new Error('Failed to verify token');
+          }
+        } catch (err) {
+          console.error('Session restoration failed:', err.response?.data?.error || err.message);
+          // Token is invalid/expired
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_user');
+          setUser(null);
+        }
+      }
+      setLoading(false);
+    };
+
+    restoreSession();
+  }, []);
+
+  // Authenticate user against database
   const login = async (email, password) => {
     setLoading(true);
     setError(null);
     try {
-      // Simulate API latency
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const users = db.getUsers();
-      const matchedUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-
-      if (matchedUser) {
-        setUser(matchedUser);
-        localStorage.setItem('auth_user', JSON.stringify(matchedUser));
-        return { success: true, user: matchedUser };
+      const response = await client.post('/auth/login', { email, password });
+      if (response.data && response.data.success) {
+        const { token, user: loggedUser } = response.data;
+        localStorage.setItem('auth_token', token);
+        localStorage.setItem('auth_user', JSON.stringify(loggedUser));
+        setUser(loggedUser);
+        return { success: true, user: loggedUser };
       } else {
-        throw new Error('Invalid email or password. Use demo credentials shown below.');
+        throw new Error(response.data?.error || 'Authentication failed');
       }
     } catch (err) {
-      setError(err.message);
-      return { success: false, error: err.message };
+      const errorMsg = err.response?.data?.error || err.message || 'Invalid email or password.';
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
     } finally {
       setLoading(false);
     }
@@ -43,43 +64,20 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      const users = db.getUsers();
-      const existingUser = users.find(u => u.email.toLowerCase() === formData.email.toLowerCase());
-      if (existingUser) {
-        throw new Error('Email is already registered. Please login.');
+      const response = await client.post('/auth/register', formData);
+      if (response.data && response.data.success) {
+        const { token, user: registeredUser } = response.data;
+        localStorage.setItem('auth_token', token);
+        localStorage.setItem('auth_user', JSON.stringify(registeredUser));
+        setUser(registeredUser);
+        return { success: true, user: registeredUser };
+      } else {
+        throw new Error(response.data?.error || 'Registration failed');
       }
-
-      // Create new Tenant user
-      const newTenantId = `user-${users.length + 1}`;
-      const newTenant = {
-        id: newTenantId,
-        name: formData.name,
-        email: formData.email,
-        role: 'student', // Keep role as 'student' internally for routing
-        hostelId: 'hostel-1',
-        hostelName: db.getHostels()[0]?.name || 'Elite Residency PG',
-        roomId: null,
-        roomNo: 'Not Allocated',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60',
-        phone: formData.phone || '',
-        emergencyContact: formData.emergencyContact || '',
-        college: formData.college || 'Not Specified', // college property maps to Affiliation/Occupation
-        address: formData.address || '',
-        gender: formData.gender || 'Not Specified'
-      };
-
-      users.push(newTenant);
-      db.saveUsers(users);
-
-      // Auto login as the newly registered Tenant
-      setUser(newTenant);
-      localStorage.setItem('auth_user', JSON.stringify(newTenant));
-      return { success: true, user: newTenant };
     } catch (err) {
-      setError(err.message);
-      return { success: false, error: err.message };
+      const errorMsg = err.response?.data?.error || err.message || 'Registration failed.';
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
     } finally {
       setLoading(false);
     }
@@ -87,11 +85,12 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, registerTenant, logout, loading, error, setError }}>
+    <AuthContext.Provider value={{ user, setUser, login, registerTenant, logout, loading, error, setError }}>
       {children}
     </AuthContext.Provider>
   );

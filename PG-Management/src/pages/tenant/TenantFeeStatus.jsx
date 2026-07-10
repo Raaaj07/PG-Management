@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { Wallet, Search, CreditCard, CheckCircle, Clock, AlertCircle, ArrowUpRight, X } from 'lucide-react';
 
@@ -7,6 +7,7 @@ export default function TenantFeeStatus() {
   const { user } = useAuth();
   const [fees, setFees] = useState([]);
   const [activeTab, setActiveTab] = useState('All');
+  const [error, setError] = useState(null);
   
   // Simulated checkout state
   const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -20,11 +21,22 @@ export default function TenantFeeStatus() {
     cardCvv: ''
   });
 
+  const fetchFees = async () => {
+    setError(null);
+    try {
+      const response = await client.get('/fees');
+      const myFees = response.data.data.filter(f => f.studentId === user.id);
+      setFees(myFees);
+    } catch (err) {
+      console.error('Failed to load fees:', err);
+      setError('Failed to fetch fee invoices.');
+    }
+  };
+
   useEffect(() => {
-    // Load student's fee invoices
-    const allFees = db.getFees();
-    const myFees = allFees.filter(f => f.studentId === user.id);
-    setFees(myFees);
+    if (user) {
+      fetchFees();
+    }
   }, [user]);
 
   const handleOpenPayment = (inv) => {
@@ -33,40 +45,44 @@ export default function TenantFeeStatus() {
     setPaymentLoading(false);
   };
 
-  const handlePaymentSubmit = (e) => {
+  const handlePaymentSubmit = async (e) => {
     e.preventDefault();
     setPaymentLoading(true);
+    setError(null);
     
-    // Simulate gateway delay
-    setTimeout(() => {
-      setPaymentLoading(false);
+    try {
+      const allFeesRes = await client.get('/fees');
+      const target = allFeesRes.data.data.find(f => f.id === selectedInvoice.id);
+      if (!target) {
+        setPaymentLoading(false);
+        return;
+      }
+
+      const dateToday = new Date().toISOString().split('T')[0];
+      const updatedFee = { ...target, status: 'Pending Review', date: dateToday };
+      await client.put(`/fees/${selectedInvoice.id}`, updatedFee);
+
       setPaymentSuccess(true);
       
       // Update local invoice state
       const updated = fees.map(f => {
         if (f.id === selectedInvoice.id) {
-          const dateToday = new Date().toISOString().split('T')[0];
           return { ...f, status: 'Pending Review', date: dateToday };
         }
         return f;
       });
       setFees(updated);
 
-      // Save to database
-      const allFees = db.getFees();
-      const idx = allFees.findIndex(f => f.id === selectedInvoice.id);
-      if (idx !== -1) {
-        const dateToday = new Date().toISOString().split('T')[0];
-        allFees[idx].status = 'Pending Review';
-        allFees[idx].date = dateToday;
-        db.saveFees(allFees);
-      }
-
       setTimeout(() => {
         setSelectedInvoice(null);
       }, 1500);
-
-    }, 1500);
+    } catch (err) {
+      console.error('Failed to pay invoice:', err);
+      setError('Failed to process payment with server.');
+      setSelectedInvoice(null);
+    } finally {
+      setPaymentLoading(false);
+    }
   };
 
   const filteredFees = fees.filter(f => {
@@ -83,6 +99,13 @@ export default function TenantFeeStatus() {
           Inspect monthly rental ledger sheets, trace payment dates, and complete outstanding dues online.
         </p>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex border-b border-slate-200 dark:border-slate-800 gap-4">

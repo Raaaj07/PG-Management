@@ -1,6 +1,5 @@
 import express from 'express';
 import Hostel from '../models/Hostel.js';
-import User from '../models/User.js';
 import Room from '../models/Room.js';
 import Fee from '../models/Fee.js';
 import Complaint from '../models/Complaint.js';
@@ -11,7 +10,6 @@ import SubscriptionPlan from '../models/SubscriptionPlan.js';
 
 import {
   initialHostels,
-  initialUsers,
   initialRooms,
   initialFees,
   initialComplaints,
@@ -25,7 +23,6 @@ const router = express.Router();
 
 const modelMap = {
   hostels: Hostel,
-  users: User,
   rooms: Room,
   fees: Fee,
   complaints: Complaint,
@@ -37,7 +34,6 @@ const modelMap = {
 
 const initialDataMap = {
   hostels: initialHostels,
-  users: initialUsers,
   rooms: initialRooms,
   fees: initialFees,
   complaints: initialComplaints,

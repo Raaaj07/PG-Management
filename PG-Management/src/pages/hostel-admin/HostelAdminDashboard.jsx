@@ -1,18 +1,47 @@
-import React from 'react';
-import { db } from '../../data/mockData';
+import React, { useState, useEffect } from 'react';
+import client from '../../api/client';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
 import {
-  Users, Home, Wallet, ShieldAlert, CheckCircle, Clock
+  Users, Home, Wallet, ShieldAlert, CheckCircle, Clock, AlertCircle
 } from 'lucide-react';
 
 export const HostelAdminDashboard = () => {
-  const rooms = db.getRooms();
-  const students = db.getUsers().filter(u => u.role === 'student');
-  const complaints = db.getComplaints();
-  const fees = db.getFees();
+  const [rooms, setRooms] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [complaints, setComplaints] = useState([]);
+  const [fees, setFees] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [roomsRes, usersRes, complaintsRes, feesRes] = await Promise.all([
+        client.get('/rooms'),
+        client.get('/users'),
+        client.get('/complaints'),
+        client.get('/fees')
+      ]);
+
+      setRooms(roomsRes.data.data);
+      setStudents(usersRes.data.data.filter(u => u.role === 'student'));
+      setComplaints(complaintsRes.data.data);
+      setFees(feesRes.data.data);
+    } catch (err) {
+      console.error('Failed to load dashboard metrics:', err);
+      setError('Failed to fetch property overview analytics.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
 
   const totalStudents = students.length;
   const totalRooms = rooms.length;
@@ -22,10 +51,10 @@ export const HostelAdminDashboard = () => {
   const openComplaints = complaints.filter(c => c.status !== 'Resolved').length;
 
   const stats = [
-    { label: 'Total Residents', value: totalStudents, icon: Users, color: 'text-indigo-650 bg-indigo-50 dark:bg-indigo-950/40' },
-    { label: 'Total Rooms', value: totalRooms, icon: Home, color: 'text-sky-600 bg-sky-50 dark:bg-sky-950/40' },
-    { label: 'Occupied Rooms', value: occupiedRooms, icon: CheckCircle, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40' },
-    { label: 'Pending Collections', value: pendingFees, icon: Wallet, color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/40' },
+    { label: 'Total Residents', value: totalStudents, icon: Users, color: 'text-indigo-650 bg-indigo-50 dark:bg-indigo-955/40' },
+    { label: 'Total Rooms', value: totalRooms, icon: Home, color: 'text-sky-600 bg-sky-50 dark:bg-sky-955/40' },
+    { label: 'Occupied Rooms', value: occupiedRooms, icon: CheckCircle, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-955/40' },
+    { label: 'Pending Collections', value: pendingFees, icon: Wallet, color: 'text-amber-600 bg-amber-50 dark:bg-amber-955/40' },
   ];
 
   const occupancyData = [
@@ -52,6 +81,13 @@ export const HostelAdminDashboard = () => {
         <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Property Management Console</h1>
         <p className="text-xs text-slate-500 font-medium">Tenant operational overview, check-ins, leaves, and fee compliance tracking.</p>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Grid Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

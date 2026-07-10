@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { Users, Search, LogIn, LogOut, Calendar, Plus, Clock, UserCheck, X } from 'lucide-react';
+import { Users, Search, LogIn, LogOut, Calendar, Plus, Clock, UserCheck, X, AlertCircle } from 'lucide-react';
 
 export default function VisitorManagement() {
   const { user } = useAuth();
   const [visitors, setVisitors] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   // Modal State for New Visitor Entry
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -19,48 +21,69 @@ export default function VisitorManagement() {
     purpose: '',
   });
 
-  useEffect(() => {
-    // Load visitors and student lists for current hostel
-    const allVisitors = db.getVisitors();
-    const allUsers = db.getUsers();
-    
-    // Filter visitors and students by admin's hostelId
-    const hostelVisitors = allVisitors.filter(v => {
-      // Find the host student to verify hostelId
-      const host = allUsers.find(u => u.id === v.studentId);
-      return host && host.hostelId === user.hostelId;
-    });
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [visitorsRes, usersRes] = await Promise.all([
+        client.get('/visitors'),
+        client.get('/users')
+      ]);
 
-    const hostelStudents = allUsers.filter(u => u.role === 'student' && u.hostelId === user.hostelId);
-    
-    setVisitors(hostelVisitors);
-    setStudentsList(hostelStudents);
-  }, [user]);
+      const allVisitors = visitorsRes.data.data;
+      const allUsers = usersRes.data.data;
 
-  const handleCheckOut = (visId) => {
-    const updated = visitors.map(v => {
-      if (v.id === visId) {
-        const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        return { ...v, status: 'Checked Out', outTime: timeNow };
-      }
-      return v;
-    });
-    setVisitors(updated);
-    
-    // Save to master database
-    const allVisitors = db.getVisitors();
-    const index = allVisitors.findIndex(v => v.id === visId);
-    if (index !== -1) {
-      const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      allVisitors[index].status = 'Checked Out';
-      allVisitors[index].outTime = timeNow;
-      db.saveVisitors(allVisitors);
+      const hostelVisitors = allVisitors.filter(v => {
+        const host = allUsers.find(u => u.id === v.studentId);
+        return host && host.hostelId === user.hostelId;
+      });
+
+      const hostelStudents = allUsers.filter(u => u.role === 'student' && u.hostelId === user.hostelId);
+
+      setVisitors(hostelVisitors);
+      setStudentsList(hostelStudents);
+    } catch (err) {
+      console.error('Failed to load visitors list:', err);
+      setError('Failed to load visitor logs.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleAddVisitor = (e) => {
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
+
+  const handleCheckOut = async (visId) => {
+    setError(null);
+    try {
+      const vRes = await client.get('/visitors');
+      const target = vRes.data.data.find(v => v.id === visId);
+      if (!target) return;
+
+      const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const updatedVisitor = { ...target, status: 'Checked Out', outTime: timeNow };
+      await client.put(`/visitors/${visId}`, updatedVisitor);
+
+      const updated = visitors.map(v => {
+        if (v.id === visId) {
+          return { ...v, status: 'Checked Out', outTime: timeNow };
+        }
+        return v;
+      });
+      setVisitors(updated);
+    } catch (err) {
+      console.error('Failed to checkout visitor:', err);
+      setError('Failed to update visitor checkout status.');
+    }
+  };
+
+  const handleAddVisitor = async (e) => {
     e.preventDefault();
     if (!newVisitor.studentId || !newVisitor.visitorName || !newVisitor.relation) return;
+    setError(null);
 
     const hostStudent = studentsList.find(s => s.id === newVisitor.studentId);
     const dateToday = new Date().toISOString().split('T')[0];
@@ -80,17 +103,18 @@ export default function VisitorManagement() {
       status: 'Checked In'
     };
 
-    const updatedVisitors = [newEntry, ...visitors];
-    setVisitors(updatedVisitors);
-
-    // Save to master database
-    const allVisitors = db.getVisitors();
-    allVisitors.unshift(newEntry);
-    db.saveVisitors(allVisitors);
-
-    // Reset Form & Close Modal
-    setNewVisitor({ studentId: '', visitorName: '', relation: '', purpose: '' });
-    setIsModalOpen(false);
+    setLoading(true);
+    try {
+      await client.post('/visitors', newEntry);
+      setVisitors([newEntry, ...visitors]);
+      setNewVisitor({ studentId: '', visitorName: '', relation: '', purpose: '' });
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Failed to add visitor:', err);
+      setError('Failed to check in guest.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredVisitors = visitors.filter(v => {
@@ -121,6 +145,13 @@ export default function VisitorManagement() {
           <Plus className="w-4 h-4" /> Record New Entry
         </button>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Info Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

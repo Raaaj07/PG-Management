@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { User, Phone, Shield, ShieldCheck, Mail, Building, MapPin, Save, AlertCircle } from 'lucide-react';
 
 export default function TenantProfile() {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const [profile, setProfile] = useState({
     name: '',
     email: '',
@@ -15,6 +15,8 @@ export default function TenantProfile() {
     roomNo: ''
   });
   const [successMsg, setSuccessMsg] = useState('');
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -22,51 +24,75 @@ export default function TenantProfile() {
   });
 
   useEffect(() => {
-    // Load student user profile
-    setProfile({
-      name: user.name,
-      email: user.email,
-      phone: user.phone || '',
-      emergencyContact: user.emergencyContact || '',
-      college: user.college || '',
-      hostelName: user.hostelName || '',
-      roomNo: user.roomNo || ''
-    });
+    if (user) {
+      setProfile({
+        name: user.name,
+        email: user.email,
+        phone: user.phone || '',
+        emergencyContact: user.emergencyContact || '',
+        college: user.college || '',
+        hostelName: user.hostelName || '',
+        roomNo: user.roomNo || ''
+      });
+    }
   }, [user]);
 
-  const handleUpdateProfile = (e) => {
+  const handleUpdateProfile = async (e) => {
     e.preventDefault();
-    
-    // Save to master db
-    const allUsers = db.getUsers();
-    const idx = allUsers.findIndex(u => u.id === user.id);
-    if (idx !== -1) {
+    setError(null);
+    setLoading(true);
+
+    try {
+      const uRes = await client.get('/users');
+      const targetUser = uRes.data.data.find(u => u.id === user.id);
+      if (!targetUser) {
+        setLoading(false);
+        return;
+      }
+
       const updatedUser = {
-        ...allUsers[idx],
+        ...targetUser,
         phone: profile.phone,
         emergencyContact: profile.emergencyContact,
         college: profile.college
       };
-      allUsers[idx] = updatedUser;
-      db.saveUsers(allUsers);
+
+      await client.put(`/users/${user.id}`, updatedUser);
 
       // Save to active session
       localStorage.setItem('auth_user', JSON.stringify(updatedUser));
-    }
+      setUser(updatedUser);
 
-    setSuccessMsg('Profile contacts updated successfully!');
-    setTimeout(() => setSuccessMsg(''), 4000);
+      setSuccessMsg('Profile contacts updated successfully!');
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+      setError('Failed to update profile details.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleResetPassword = (e) => {
+  const handleResetPassword = async (e) => {
     e.preventDefault();
     if (!passwordForm.newPassword || passwordForm.newPassword !== passwordForm.confirmPassword) {
       alert('New passwords do not match!');
       return;
     }
-    setSuccessMsg('Password reset successfully (Sandbox simulation)!');
-    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    setTimeout(() => setSuccessMsg(''), 4000);
+    setError(null);
+    setLoading(true);
+
+    try {
+      await client.put(`/users/${user.id}`, { password: passwordForm.newPassword });
+      setSuccessMsg('Password updated successfully!');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err) {
+      console.error('Failed to update password:', err);
+      setError('Failed to update password.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -84,6 +110,13 @@ export default function TenantProfile() {
         <div className="p-4 bg-emerald-50 dark:bg-emerald-955/35 text-emerald-650 dark:text-emerald-450 border border-emerald-250/50 dark:border-emerald-900/30 rounded-xl text-xs font-bold flex items-center gap-2">
           <ShieldCheck className="w-4.5 h-4.5" />
           <span>{successMsg}</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
         </div>
       )}
 

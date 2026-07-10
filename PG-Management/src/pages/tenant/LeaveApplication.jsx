@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { CalendarRange, Plus, Search, CheckCircle, Clock, AlertTriangle, X, Calendar } from 'lucide-react';
+import { CalendarRange, Plus, Search, CheckCircle, Clock, AlertTriangle, X, Calendar, AlertCircle } from 'lucide-react';
 
 export default function LeaveApplication() {
   const { user } = useAuth();
   const [leaves, setLeaves] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [newLeave, setNewLeave] = useState({
     startDate: '',
     endDate: '',
@@ -14,16 +16,31 @@ export default function LeaveApplication() {
   });
   const [successMsg, setSuccessMsg] = useState('');
 
+  const fetchLeaves = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await client.get('/leaves');
+      const mine = response.data.data.filter(l => l.studentId === user.id);
+      setLeaves(mine);
+    } catch (err) {
+      console.error('Failed to load leaves:', err);
+      setError('Failed to fetch your outpass application logs.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Fetch user leaves
-    const all = db.getLeaves();
-    const mine = all.filter(l => l.studentId === user.id);
-    setLeaves(mine);
+    if (user) {
+      fetchLeaves();
+    }
   }, [user]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!newLeave.startDate || !newLeave.endDate || !newLeave.reason) return;
+    setError(null);
 
     const request = {
       id: `leave-${Date.now()}`,
@@ -37,19 +54,20 @@ export default function LeaveApplication() {
       date: new Date().toISOString().split('T')[0]
     };
 
-    const updated = [request, ...leaves];
-    setLeaves(updated);
-
-    // Save to master db
-    const all = db.getLeaves();
-    all.unshift(request);
-    db.saveLeaves(all);
-
-    setNewLeave({ startDate: '', endDate: '', reason: '' });
-    setIsModalOpen(false);
-
-    setSuccessMsg('Leave outpass requested! Waiting for Warden approval.');
-    setTimeout(() => setSuccessMsg(''), 4000);
+    setLoading(true);
+    try {
+      await client.post('/leaves', request);
+      setLeaves([request, ...leaves]);
+      setNewLeave({ startDate: '', endDate: '', reason: '' });
+      setIsModalOpen(false);
+      setSuccessMsg('Leave outpass requested! Waiting for Warden approval.');
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err) {
+      console.error('Failed to submit leave:', err);
+      setError('Failed to submit leave request.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -75,6 +93,13 @@ export default function LeaveApplication() {
         <div className="p-4 bg-emerald-50 dark:bg-emerald-955/35 text-emerald-650 dark:text-emerald-450 border border-emerald-250/50 dark:border-emerald-900/30 rounded-xl text-xs font-bold flex items-center gap-2">
           <CheckCircle className="w-4.5 h-4.5" />
           <span>{successMsg}</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
         </div>
       )}
 

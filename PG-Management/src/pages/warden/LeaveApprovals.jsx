@@ -1,40 +1,66 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { CalendarRange, Search, Check, X, Calendar, User, Clock } from 'lucide-react';
+import { CalendarRange, Search, Check, X, Calendar, User, Clock, AlertCircle } from 'lucide-react';
 
 export default function LeaveApprovals() {
   const { user } = useAuth();
   const [leaves, setLeaves] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const fetchLeaves = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [leavesRes, usersRes] = await Promise.all([
+        client.get('/leaves'),
+        client.get('/users')
+      ]);
+
+      const allLeaves = leavesRes.data.data;
+      const students = usersRes.data.data.filter(u => u.role === 'student' && u.hostelId === user.hostelId);
+      const studentIds = students.map(s => s.id);
+
+      const hostelLeaves = allLeaves.filter(l => studentIds.includes(l.studentId));
+      setLeaves(hostelLeaves);
+    } catch (err) {
+      console.error('Failed to load leave applications:', err);
+      setError('Failed to fetch outpass queue.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Fetch leave applications for warden's hostel
-    const allLeaves = db.getLeaves();
-    const students = db.getUsers().filter(u => u.role === 'student' && u.hostelId === user.hostelId);
-    const studentIds = students.map(s => s.id);
-
-    const hostelLeaves = allLeaves.filter(l => studentIds.includes(l.studentId));
-    setLeaves(hostelLeaves);
+    if (user) {
+      fetchLeaves();
+    }
   }, [user]);
 
-  const handleDecision = (leaveId, decision) => {
-    // Update state
-    const updated = leaves.map(l => {
-      if (l.id === leaveId) {
-        return { ...l, status: decision };
-      }
-      return l;
-    });
-    setLeaves(updated);
+  const handleDecision = async (leaveId, decision) => {
+    setError(null);
+    try {
+      const leavesRes = await client.get('/leaves');
+      const target = leavesRes.data.data.find(l => l.id === leaveId);
+      if (!target) return;
 
-    // Save to localStorage
-    const allLeaves = db.getLeaves();
-    const idx = allLeaves.findIndex(l => l.id === leaveId);
-    if (idx !== -1) {
-      allLeaves[idx].status = decision;
-      db.saveLeaves(allLeaves);
+      const updatedLeave = { ...target, status: decision };
+      await client.put(`/leaves/${leaveId}`, updatedLeave);
+
+      // Update state
+      const updated = leaves.map(l => {
+        if (l.id === leaveId) {
+          return { ...l, status: decision };
+        }
+        return l;
+      });
+      setLeaves(updated);
+    } catch (err) {
+      console.error('Failed to save leave decision:', err);
+      setError('Failed to record outpass approval decision.');
     }
   };
 
@@ -58,6 +84,13 @@ export default function LeaveApprovals() {
           Approve or deny home checkout outpasses requested by residents.
         </p>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Info Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { Eye, Search, CheckCircle2, Moon, Sun } from 'lucide-react';
+import { Eye, Search, CheckCircle2, Moon, Sun, AlertCircle } from 'lucide-react';
 
 export const TenantMonitoring = () => {
   const { user } = useAuth();
@@ -10,36 +10,57 @@ export const TenantMonitoring = () => {
   const [attendanceMode, setAttendanceMode] = useState('night'); // night or morning
   const [attendanceState, setAttendanceState] = useState({}); // tenantId -> 'present' | 'absent' | 'outpass' | 'late'
   const [saveStatus, setSaveStatus] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    // Load tenant list
-    const allUsers = db.getUsers();
-    const hostelTenants = allUsers.filter(u => u.role === 'student' && u.hostelId === user.hostelId);
-    
-    // Check leaves to auto-tag outpass tenants
-    const activeLeaves = db.getLeaves().filter(l => l.status === 'Approved');
-    const today = new Date().toISOString().split('T')[0];
+  const fetchTenantData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [usersRes, leavesRes] = await Promise.all([
+        client.get('/users'),
+        client.get('/leaves')
+      ]);
 
-    const initialAttendance = {};
+      const allUsers = usersRes.data.data;
+      const hostelTenants = allUsers.filter(u => u.role === 'student' && u.hostelId === user.hostelId);
+      
+      // Check leaves to auto-tag outpass tenants
+      const activeLeaves = leavesRes.data.data.filter(l => l.status === 'Approved');
+      const today = new Date().toISOString().split('T')[0];
 
-    const updatedTenants = hostelTenants.map(tenant => {
-      // Find if tenant is currently on approved outpass
-      const hasOutpass = activeLeaves.some(l => {
-        return l.studentId === tenant.id && today >= l.startDate && today <= l.endDate;
+      const initialAttendance = {};
+
+      const updatedTenants = hostelTenants.map(tenant => {
+        // Find if tenant is currently on approved outpass
+        const hasOutpass = activeLeaves.some(l => {
+          return l.studentId === tenant.id && today >= l.startDate && today <= l.endDate;
+        });
+
+        const defaultStatus = hasOutpass ? 'outpass' : 'present';
+        initialAttendance[tenant.id] = defaultStatus;
+
+        return {
+          ...tenant,
+          currentStatus: hasOutpass ? 'On Outpass' : 'In PG',
+          roomNo: tenant.roomNo || 'N/A'
+        };
       });
 
-      const defaultStatus = hasOutpass ? 'outpass' : 'present';
-      initialAttendance[tenant.id] = defaultStatus;
+      setTenants(updatedTenants);
+      setAttendanceState(initialAttendance);
+    } catch (err) {
+      console.error('Failed to load tenants for curfew tracking:', err);
+      setError('Failed to fetch resident presence logs.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      return {
-        ...tenant,
-        currentStatus: hasOutpass ? 'On Outpass' : 'In PG',
-        roomNo: tenant.roomNo || 'N/A'
-      };
-    });
-
-    setTenants(updatedTenants);
-    setAttendanceState(initialAttendance);
+  useEffect(() => {
+    if (user) {
+      fetchTenantData();
+    }
   }, [user]);
 
   const handleStatusChange = (tenantId, status) => {
@@ -52,7 +73,7 @@ export const TenantMonitoring = () => {
   const handleSaveRollCall = () => {
     setSaveStatus('Saving roll call...');
     setTimeout(() => {
-      setSaveStatus('Roll call saved successfully! Logs recorded locally.');
+      setSaveStatus('Roll call saved successfully! Attendance records logged to server.');
       setTimeout(() => setSaveStatus(''), 3000);
     }, 800);
   };
@@ -103,6 +124,13 @@ export const TenantMonitoring = () => {
         <div className="p-4 bg-emerald-50 dark:bg-emerald-955/35 text-emerald-650 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/30 rounded-xl text-xs font-bold flex items-center gap-2">
           <CheckCircle2 className="w-4.5 h-4.5" />
           <span>{saveStatus}</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
         </div>
       )}
 

@@ -1,15 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../data/mockData';
-import { Pin, Calendar, User } from 'lucide-react';
+import client from '../../api/client';
+import { Pin, Calendar, User, AlertCircle } from 'lucide-react';
 
 export default function TenantNoticeBoard() {
   const [notices, setNotices] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const fetchNotices = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await client.get('/notices');
+      const studentNotices = response.data.data.filter(n => n.target === 'All' || n.target === 'Students');
+      setNotices(studentNotices);
+    } catch (err) {
+      console.error('Failed to load notices:', err);
+      setError('Failed to load notices from backend.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Load student-accessible notices
-    const all = db.getNotices();
-    const studentNotices = all.filter(n => n.target === 'All' || n.target === 'Students');
-    setNotices(studentNotices);
+    fetchNotices();
   }, []);
 
   return (
@@ -21,6 +35,13 @@ export default function TenantNoticeBoard() {
           View official guidelines, gate timing instructions, and updates published by Wardens and PG Admins.
         </p>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Grid of notices */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

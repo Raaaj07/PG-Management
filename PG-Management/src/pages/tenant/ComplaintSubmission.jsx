@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { ShieldAlert, Plus, Search, CheckCircle, Clock, AlertTriangle, X } from 'lucide-react';
+import { ShieldAlert, Plus, Search, CheckCircle, Clock, AlertTriangle, X, AlertCircle } from 'lucide-react';
 
 export default function ComplaintSubmission() {
   const { user } = useAuth();
@@ -14,17 +14,35 @@ export default function ComplaintSubmission() {
     priority: 'Medium'
   });
   const [successMsg, setSuccessMsg] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const fetchComplaints = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await client.get('/complaints');
+      const all = response.data.data;
+      const mine = all.filter(c => c.studentId === user.id);
+      setComplaints(mine);
+    } catch (err) {
+      console.error('Failed to load complaints:', err);
+      setError('Failed to load your complaints history.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Load student's complaints
-    const all = db.getComplaints();
-    const mine = all.filter(c => c.studentId === user.id);
-    setComplaints(mine);
+    if (user) {
+      fetchComplaints();
+    }
   }, [user]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!newComplaint.title || !newComplaint.description) return;
+    setError(null);
 
     const newTicket = {
       id: `comp-${Date.now()}`,
@@ -40,20 +58,20 @@ export default function ComplaintSubmission() {
       reply: null
     };
 
-    const updated = [newTicket, ...complaints];
-    setComplaints(updated);
-
-    // Save to master db
-    const all = db.getComplaints();
-    all.unshift(newTicket);
-    db.saveComplaints(all);
-
-    // Form cleanup
-    setNewComplaint({ title: '', category: 'Internet', description: '', priority: 'Medium' });
-    setIsModalOpen(false);
-
-    setSuccessMsg('Complaint registered successfully! Warden will review it shortly.');
-    setTimeout(() => setSuccessMsg(''), 4000);
+    setLoading(true);
+    try {
+      await client.post('/complaints', newTicket);
+      setComplaints([newTicket, ...complaints]);
+      setNewComplaint({ title: '', category: 'Internet', description: '', priority: 'Medium' });
+      setIsModalOpen(false);
+      setSuccessMsg('Complaint registered successfully! Warden will review it shortly.');
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err) {
+      console.error('Failed to submit complaint:', err);
+      setError('Failed to submit your complaint.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -79,6 +97,13 @@ export default function ComplaintSubmission() {
         <div className="p-4 bg-emerald-50 dark:bg-emerald-955/35 text-emerald-650 dark:text-emerald-450 border border-emerald-250/50 dark:border-emerald-900/30 rounded-xl text-xs font-bold flex items-center gap-2 animate-fade-in">
           <CheckCircle className="w-4.5 h-4.5" />
           <span>{successMsg}</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
         </div>
       )}
 

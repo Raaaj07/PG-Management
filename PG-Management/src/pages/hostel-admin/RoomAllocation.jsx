@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { db } from '../../data/mockData';
+import React, { useState, useEffect } from 'react';
+import client from '../../api/client';
 import { 
   Key, UserMinus, LayoutGrid, List, Bed, Home, Plus, 
-  Trash2, UserPlus, Sparkles, AlertTriangle 
+  Trash2, UserPlus, Sparkles, AlertTriangle, AlertCircle 
 } from 'lucide-react';
 
 const ROOM_IMAGES = {
@@ -17,36 +17,66 @@ const ROOM_IMAGES = {
 const DEFAULT_ROOM_IMAGE = 'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=600&auto=format&fit=crop&q=60';
 
 export const RoomAllocation = () => {
-  const [students, setStudents] = useState(() => db.getUsers().filter(u => u.role === 'student'));
-  const [rooms, setRooms] = useState(() => db.getRooms());
+  const [students, setStudents] = useState([]);
+  const [rooms, setRooms] = useState([]);
   const [viewMode, setViewMode] = useState('rooms'); // 'rooms' (Airbnb Grid) or 'residents' (Table list)
   const [showAllocateModal, setShowAllocateModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [targetRoomNo, setTargetRoomNo] = useState('101');
   const [targetStudentId, setTargetStudentId] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const deallocateRoom = (studentId, roomNo) => {
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [usersRes, roomsRes] = await Promise.all([
+        client.get('/users'),
+        client.get('/rooms')
+      ]);
+      const allUsers = usersRes.data.data;
+      const studentUsers = allUsers.filter(u => u.role === 'student');
+      setStudents(studentUsers);
+      setRooms(roomsRes.data.data);
+    } catch (err) {
+      console.error('Failed to load room allocation details:', err);
+      setError('Failed to fetch rooms and residents databases.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const deallocateRoom = async (studentId, roomNo) => {
     if (window.confirm(`Are you sure you want to deallocate Room ${roomNo} for this resident?`)) {
-      const allUsers = db.getUsers();
-      const updatedUsers = allUsers.map(u => {
-        if (u.id === studentId) {
-          return { ...u, roomId: null, roomNo: 'Unallocated' };
-        }
-        return u;
-      });
-      db.saveUsers(updatedUsers);
-      setStudents(updatedUsers.filter(u => u.role === 'student'));
+      setError(null);
+      try {
+        const [usersRes, roomsRes] = await Promise.all([
+          client.get('/users'),
+          client.get('/rooms')
+        ]);
+        const targetStudent = usersRes.data.data.find(u => u.id === studentId);
+        const targetRoom = roomsRes.data.data.find(r => r.roomNo === roomNo);
+        if (!targetStudent || !targetRoom) return;
 
-      const allRooms = db.getRooms();
-      const updatedRooms = allRooms.map(r => {
-        if (r.roomNo === roomNo) {
-          return { ...r, occupied: Math.max(0, r.occupied - 1) };
-        }
-        return r;
-      });
-      db.saveRooms(updatedRooms);
-      setRooms(updatedRooms);
+        const updatedStudent = { ...targetStudent, roomId: null, roomNo: 'Unallocated' };
+        const updatedRoom = { ...targetRoom, occupied: Math.max(0, targetRoom.occupied - 1) };
+
+        await Promise.all([
+          client.put(`/users/${studentId}`, updatedStudent),
+          client.put(`/rooms/${targetRoom.id}`, updatedRoom)
+        ]);
+
+        fetchData();
+      } catch (err) {
+        console.error('Failed to deallocate room:', err);
+        setError('Failed to deallocate room.');
+      }
     }
   };
 
@@ -72,62 +102,52 @@ export const RoomAllocation = () => {
     setShowAllocateModal(true);
   };
 
-  const handleConfirmAllocation = (e) => {
+  const handleConfirmAllocation = async (e) => {
     e.preventDefault();
-    
-    // Scenario 1: Allocating a specific student to a chosen room
-    if (selectedStudent) {
-      if (!targetRoomNo) return;
-      const allUsers = db.getUsers();
-      const updatedUsers = allUsers.map(u => {
-        if (u.id === selectedStudent.id) {
-          return { ...u, roomId: `room-${targetRoomNo}`, roomNo: targetRoomNo };
-        }
-        return u;
-      });
-      db.saveUsers(updatedUsers);
-      setStudents(updatedUsers.filter(u => u.role === 'student'));
+    setError(null);
+    try {
+      const [usersRes, roomsRes] = await Promise.all([
+        client.get('/users'),
+        client.get('/rooms')
+      ]);
 
-      const allRooms = db.getRooms();
-      const updatedRooms = allRooms.map(r => {
-        if (r.roomNo === targetRoomNo) {
-          return { ...r, occupied: Math.min(r.capacity, r.occupied + 1) };
-        }
-        return r;
-      });
-      db.saveRooms(updatedRooms);
-      setRooms(updatedRooms);
-    } 
-    // Scenario 2: Allocating a chosen student to a specific room
-    else if (selectedRoom) {
-      if (!targetStudentId) return;
-      const studentToAllocate = students.find(s => s.id === targetStudentId);
-      if (!studentToAllocate) return;
+      if (selectedStudent) {
+        if (!targetRoomNo) return;
+        const targetStudent = usersRes.data.data.find(u => u.id === selectedStudent.id);
+        const targetRoom = roomsRes.data.data.find(r => r.roomNo === targetRoomNo);
+        if (!targetStudent || !targetRoom) return;
 
-      const allUsers = db.getUsers();
-      const updatedUsers = allUsers.map(u => {
-        if (u.id === targetStudentId) {
-          return { ...u, roomId: selectedRoom.id, roomNo: selectedRoom.roomNo };
-        }
-        return u;
-      });
-      db.saveUsers(updatedUsers);
-      setStudents(updatedUsers.filter(u => u.role === 'student'));
+        const updatedStudent = { ...targetStudent, roomId: targetRoom.id, roomNo: targetRoomNo };
+        const updatedRoom = { ...targetRoom, occupied: Math.min(targetRoom.capacity, targetRoom.occupied + 1) };
 
-      const allRooms = db.getRooms();
-      const updatedRooms = allRooms.map(r => {
-        if (r.id === selectedRoom.id) {
-          return { ...r, occupied: Math.min(r.capacity, r.occupied + 1) };
-        }
-        return r;
-      });
-      db.saveRooms(updatedRooms);
-      setRooms(updatedRooms);
+        await Promise.all([
+          client.put(`/users/${selectedStudent.id}`, updatedStudent),
+          client.put(`/rooms/${targetRoom.id}`, updatedRoom)
+        ]);
+      } 
+      else if (selectedRoom) {
+        if (!targetStudentId) return;
+        const targetStudent = usersRes.data.data.find(u => u.id === targetStudentId);
+        const targetRoom = roomsRes.data.data.find(r => r.id === selectedRoom.id);
+        if (!targetStudent || !targetRoom) return;
+
+        const updatedStudent = { ...targetStudent, roomId: selectedRoom.id, roomNo: selectedRoom.roomNo };
+        const updatedRoom = { ...targetRoom, occupied: Math.min(targetRoom.capacity, targetRoom.occupied + 1) };
+
+        await Promise.all([
+          client.put(`/users/${targetStudentId}`, updatedStudent),
+          client.put(`/rooms/${selectedRoom.id}`, updatedRoom)
+        ]);
+      }
+
+      setShowAllocateModal(false);
+      setSelectedStudent(null);
+      setSelectedRoom(null);
+      fetchData();
+    } catch (err) {
+      console.error('Failed to allocate room:', err);
+      setError('Failed to save room allocation.');
     }
-
-    setShowAllocateModal(false);
-    setSelectedStudent(null);
-    setSelectedRoom(null);
   };
 
   const getRoomImage = (roomNo) => ROOM_IMAGES[roomNo] || DEFAULT_ROOM_IMAGE;
@@ -168,6 +188,13 @@ export const RoomAllocation = () => {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Airbnb-style Rooms Grid View */}
       {viewMode === 'rooms' && (

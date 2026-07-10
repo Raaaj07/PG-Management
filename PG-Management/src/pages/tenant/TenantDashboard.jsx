@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { Home, Wallet, ShieldAlert, CalendarRange, Pin, ArrowRight } from 'lucide-react';
+import { Home, Wallet, ShieldAlert, CalendarRange, Pin, ArrowRight, AlertCircle } from 'lucide-react';
 
 export default function TenantDashboard() {
   const { user } = useAuth();
@@ -10,28 +10,48 @@ export default function TenantDashboard() {
   const [feeDue, setFeeDue] = useState(null);
   const [recentNotice, setRecentNotice] = useState(null);
   const [activeLeave, setActiveLeave] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [roomsRes, feesRes, noticesRes, leavesRes] = await Promise.all([
+        client.get('/rooms'),
+        client.get('/fees'),
+        client.get('/notices'),
+        client.get('/leaves')
+      ]);
+
+      const rooms = roomsRes.data.data;
+      const myRoom = rooms.find(r => r.id === user.roomId || r.roomNo === user.roomNo);
+      setRoom(myRoom);
+
+      const fees = feesRes.data.data.filter(f => f.studentId === user.id);
+      const unpaid = fees.find(f => f.status === 'Unpaid');
+      setFeeDue(unpaid);
+
+      const notices = noticesRes.data.data.filter(n => n.target === 'All' || n.target === 'Students');
+      if (notices.length > 0) {
+        setRecentNotice(notices[0]);
+      }
+
+      const leaves = leavesRes.data.data.filter(l => l.studentId === user.id);
+      if (leaves.length > 0) {
+        setActiveLeave(leaves[0]);
+      }
+    } catch (err) {
+      console.error('Failed to load dashboard data:', err);
+      setError('Failed to fetch dashboard overview metrics.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Get room details
-    const rooms = db.getRooms();
-    const myRoom = rooms.find(r => r.id === user.roomId);
-    setRoom(myRoom);
-
-    // Get current month unpaid fee
-    const fees = db.getFees().filter(f => f.studentId === user.id);
-    const unpaid = fees.find(f => f.status === 'Unpaid');
-    setFeeDue(unpaid);
-
-    // Get latest notice
-    const notices = db.getNotices().filter(n => n.target === 'All' || n.target === 'Students');
-    if (notices.length > 0) {
-      setRecentNotice(notices[0]);
-    }
-
-    // Get latest leave application
-    const leaves = db.getLeaves().filter(l => l.studentId === user.id);
-    if (leaves.length > 0) {
-      setActiveLeave(leaves[0]);
+    if (user) {
+      fetchDashboardData();
     }
   }, [user]);
 
@@ -49,6 +69,13 @@ export default function TenantDashboard() {
           </p>
         </div>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Quick stats dashboard cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -1,15 +1,42 @@
-import React, { useState } from 'react';
-import { db } from '../../data/mockData';
-import { Search, Filter, Plus, Bell, Check, Trash2, FileSpreadsheet } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import client from '../../api/client';
+import { Search, Filter, Plus, Bell, Check, Trash2, FileSpreadsheet, AlertCircle } from 'lucide-react';
 
 export const FeeManagement = () => {
-  const [fees, setFees] = useState(() => db.getFees());
+  const [fees, setFees] = useState([]);
+  const [students, setStudents] = useState([]);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newInvoice, setNewInvoice] = useState({ studentId: 'user-4', amount: 12000, month: 'July 2026' });
+  const [newInvoice, setNewInvoice] = useState({ studentId: '', amount: 12000, month: 'July 2026' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const students = db.getUsers().filter(u => u.role === 'student');
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [feesRes, usersRes] = await Promise.all([
+        client.get('/fees'),
+        client.get('/users')
+      ]);
+      setFees(feesRes.data.data);
+      const studentUsers = usersRes.data.data.filter(u => u.role === 'student');
+      setStudents(studentUsers);
+      if (studentUsers.length > 0 && !newInvoice.studentId) {
+        setNewInvoice(prev => ({ ...prev, studentId: studentUsers[0].id }));
+      }
+    } catch (err) {
+      console.error('Failed to load fees data:', err);
+      setError('Failed to fetch fee invoices.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const filteredFees = fees.filter(f => {
     const matchesSearch = f.studentName.toLowerCase().includes(search.toLowerCase()) || f.invoiceNo.toLowerCase().includes(search.toLowerCase());
@@ -17,28 +44,41 @@ export const FeeManagement = () => {
     return matchesSearch && matchesFilter;
   });
 
-  const approvePayment = (feeId) => {
-    const updated = fees.map(f => {
-      if (f.id === feeId) {
-        return { ...f, status: 'Paid', date: new Date().toISOString().split('T')[0] };
-      }
-      return f;
-    });
-    setFees(updated);
-    db.saveFees(updated);
+  const approvePayment = async (feeId) => {
+    setError(null);
+    try {
+      const feesRes = await client.get('/fees');
+      const target = feesRes.data.data.find(f => f.id === feeId);
+      if (!target) return;
+
+      const updatedFee = { ...target, status: 'Paid', date: new Date().toISOString().split('T')[0] };
+      await client.put(`/fees/${feeId}`, updatedFee);
+
+      const updated = fees.map(f => {
+        if (f.id === feeId) {
+          return { ...f, status: 'Paid', date: new Date().toISOString().split('T')[0] };
+        }
+        return f;
+      });
+      setFees(updated);
+    } catch (err) {
+      console.error('Failed to approve payment:', err);
+      setError('Failed to update payment status to Paid.');
+    }
   };
 
   const sendReminder = (studentName) => {
     alert(`Fee payment reminder alert dispatched via SMS & Email to ${studentName}.`);
   };
 
-  const handleCreateInvoice = (e) => {
+  const handleCreateInvoice = async (e) => {
     e.preventDefault();
+    setError(null);
     const selectedStudent = students.find(s => s.id === newInvoice.studentId);
     if (!selectedStudent) return;
 
     const added = {
-      id: `fee-${fees.length + 1}`,
+      id: `fee-${Date.now()}`,
       studentId: selectedStudent.id,
       studentName: selectedStudent.name,
       amount: parseFloat(newInvoice.amount) || 10000,
@@ -48,17 +88,30 @@ export const FeeManagement = () => {
       invoiceNo: `INV-2026-00${fees.length + 1}`
     };
 
-    const updated = [...fees, added];
-    setFees(updated);
-    db.saveFees(updated);
-    setShowAddModal(false);
+    setLoading(true);
+    try {
+      await client.post('/fees', added);
+      setFees([...fees, added]);
+      setShowAddModal(false);
+    } catch (err) {
+      console.error('Failed to create invoice:', err);
+      setError('Failed to create fee invoice.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const deleteInvoice = (feeId) => {
+  const deleteInvoice = async (feeId) => {
     if (window.confirm('Are you sure you want to delete this invoice record?')) {
-      const updated = fees.filter(f => f.id !== feeId);
-      setFees(updated);
-      db.saveFees(updated);
+      setError(null);
+      try {
+        await client.delete(`/fees/${feeId}`);
+        const updated = fees.filter(f => f.id !== feeId);
+        setFees(updated);
+      } catch (err) {
+        console.error('Failed to delete invoice:', err);
+        setError('Failed to delete fee invoice.');
+      }
     }
   };
 
@@ -76,6 +129,13 @@ export const FeeManagement = () => {
           <Plus className="w-4 h-4" /> Create Invoice
         </button>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-slate-955 p-4 rounded-2xl border border-slate-200 dark:border-slate-850 shadow-sm flex flex-col sm:flex-row items-center gap-4 justify-between transition-colors">
         <div className="relative w-full sm:w-80">

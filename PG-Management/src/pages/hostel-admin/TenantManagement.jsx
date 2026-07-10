@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { db } from '../../data/mockData';
-import { Search, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import client from '../../api/client';
+import { Search, Plus, Trash2, AlertCircle } from 'lucide-react';
 
 export const TenantManagement = () => {
-  const [tenants, setTenants] = useState(() => db.getUsers().filter(u => u.role === 'student'));
+  const [tenants, setTenants] = useState([]);
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [newTenant, setNewTenant] = useState({ 
     name: '', 
     email: '', 
@@ -17,17 +19,36 @@ export const TenantManagement = () => {
     gender: 'Male'
   });
 
+  const fetchTenants = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await client.get('/users');
+      const studentUsers = response.data.data.filter(u => u.role === 'student');
+      setTenants(studentUsers);
+    } catch (err) {
+      console.error('Failed to load tenants:', err);
+      setError('Failed to fetch resident tenant directory.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTenants();
+  }, []);
+
   const filteredTenants = tenants.filter(t =>
     t.name.toLowerCase().includes(search.toLowerCase()) || t.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleAddTenant = (e) => {
+  const handleAddTenant = async (e) => {
     e.preventDefault();
     if (!newTenant.name || !newTenant.email) return;
+    setError(null);
 
-    const allUsers = db.getUsers();
     const added = {
-      id: `user-${allUsers.length + 1}`,
+      id: `user-${Date.now()}`,
       name: newTenant.name,
       email: newTenant.email,
       role: 'student', // Keep student role internally
@@ -43,28 +64,40 @@ export const TenantManagement = () => {
       gender: newTenant.gender
     };
 
-    const updatedUsers = [...allUsers, added];
-    db.saveUsers(updatedUsers);
-    setTenants(updatedUsers.filter(u => u.role === 'student'));
-    setShowAddModal(false);
-    setNewTenant({ 
-      name: '', 
-      email: '', 
-      phone: '', 
-      college: '', 
-      roomNo: '101',
-      emergencyContact: '',
-      address: '',
-      gender: 'Male'
-    });
+    setLoading(true);
+    try {
+      await client.post('/users', added);
+      setTenants([...tenants, added]);
+      setShowAddModal(false);
+      setNewTenant({ 
+        name: '', 
+        email: '', 
+        phone: '', 
+        college: '', 
+        roomNo: '101',
+        emergencyContact: '',
+        address: '',
+        gender: 'Male'
+      });
+    } catch (err) {
+      console.error('Failed to create tenant:', err);
+      setError('Failed to register new tenant.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDeleteTenant = (tenantId) => {
+  const handleDeleteTenant = async (tenantId) => {
     if (window.confirm('Are you sure you want to checkout and remove this tenant?')) {
-      const allUsers = db.getUsers();
-      const updatedUsers = allUsers.filter(u => u.id !== tenantId);
-      db.saveUsers(updatedUsers);
-      setTenants(updatedUsers.filter(u => u.role === 'student'));
+      setError(null);
+      try {
+        await client.delete(`/users/${tenantId}`);
+        const updated = tenants.filter(u => u.id !== tenantId);
+        setTenants(updated);
+      } catch (err) {
+        console.error('Failed to delete tenant:', err);
+        setError('Failed to remove tenant.');
+      }
     }
   };
 
@@ -82,6 +115,13 @@ export const TenantManagement = () => {
           <Plus className="w-4 h-4" /> Add Tenant
         </button>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-slate-955 p-4 rounded-2xl border border-slate-200 dark:border-slate-850 shadow-sm transition-colors">
         <div className="relative w-full sm:w-80">

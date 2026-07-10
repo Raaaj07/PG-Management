@@ -1,15 +1,36 @@
-import React, { useState } from 'react';
-import { db } from '../../data/mockData';
-import { Plus, Home, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import client from '../../api/client';
+import { Plus, Home, Trash2, AlertCircle } from 'lucide-react';
 
 export const RoomManagement = () => {
-  const [rooms, setRooms] = useState(() => db.getRooms());
+  const [rooms, setRooms] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newRoom, setNewRoom] = useState({ roomNo: '', type: 'Double Sharing', floor: '1st Floor', ac: true, rent: 12000, capacity: 2 });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleAddRoom = (e) => {
+  const fetchRooms = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await client.get('/rooms');
+      setRooms(response.data.data);
+    } catch (err) {
+      console.error('Failed to load rooms:', err);
+      setError('Failed to fetch rooms config.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRooms();
+  }, []);
+
+  const handleAddRoom = async (e) => {
     e.preventDefault();
     if (!newRoom.roomNo) return;
+    setError(null);
 
     const added = {
       id: `room-${newRoom.roomNo}`,
@@ -23,19 +44,31 @@ export const RoomManagement = () => {
       hostelId: 'hostel-1'
     };
 
-    const updated = [...rooms, added];
-    setRooms(updated);
-    db.saveRooms(updated);
-
-    setShowAddModal(false);
-    setNewRoom({ roomNo: '', type: 'Double Sharing', floor: '1st Floor', ac: true, rent: 12000, capacity: 2 });
+    setLoading(true);
+    try {
+      await client.post('/rooms', added);
+      setRooms([...rooms, added]);
+      setShowAddModal(false);
+      setNewRoom({ roomNo: '', type: 'Double Sharing', floor: '1st Floor', ac: true, rent: 12000, capacity: 2 });
+    } catch (err) {
+      console.error('Failed to create room:', err);
+      setError('Failed to add new room to config.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDeleteRoom = (roomId) => {
+  const handleDeleteRoom = async (roomId) => {
     if (window.confirm('Are you sure you want to remove this room?')) {
-      const updated = rooms.filter(r => r.id !== roomId);
-      setRooms(updated);
-      db.saveRooms(updated);
+      setError(null);
+      try {
+        await client.delete(`/rooms/${roomId}`);
+        const updated = rooms.filter(r => r.id !== roomId);
+        setRooms(updated);
+      } catch (err) {
+        console.error('Failed to delete room:', err);
+        setError('Failed to delete room from config.');
+      }
     }
   };
 
@@ -53,6 +86,13 @@ export const RoomManagement = () => {
           <Plus className="w-4 h-4" /> Add Room
         </button>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Rooms Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

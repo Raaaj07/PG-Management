@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { Users, CalendarRange, DoorOpen, ShieldAlert, Check, X, ArrowRight } from 'lucide-react';
 
@@ -14,53 +14,86 @@ export default function WardenDashboard() {
   });
   const [recentLeaves, setRecentLeaves] = useState([]);
   const [recentComplaints, setRecentComplaints] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [usersRes, leavesRes, visitorsRes, complaintsRes] = await Promise.all([
+        client.get('/users'),
+        client.get('/leaves'),
+        client.get('/visitors'),
+        client.get('/complaints')
+      ]);
+
+      const allUsers = usersRes.data.data;
+      const allLeaves = leavesRes.data.data;
+      const allVisitors = visitorsRes.data.data;
+      const allComplaints = complaintsRes.data.data;
+
+      const students = allUsers.filter(u => u.role === 'student' && u.hostelId === user.hostelId);
+      const leaves = allLeaves.filter(l => {
+        const student = allUsers.find(u => u.id === l.studentId);
+        return student && student.hostelId === user.hostelId;
+      });
+      const visitors = allVisitors.filter(v => {
+        const student = allUsers.find(u => u.id === v.studentId);
+        return student && student.hostelId === user.hostelId;
+      });
+      const complaints = allComplaints.filter(c => {
+        const student = allUsers.find(u => u.id === c.studentId);
+        return student && student.hostelId === user.hostelId;
+      });
+
+      const pendingLeaves = leaves.filter(l => l.status === 'Pending');
+      const activeVisitors = visitors.filter(v => v.status === 'Checked In');
+      const pendingComplaints = complaints.filter(c => c.status === 'Pending' || c.status === 'In Progress');
+
+      setStats({
+        studentsCount: students.length,
+        pendingLeaves: pendingLeaves.length,
+        activeVisitors: activeVisitors.length,
+        pendingComplaints: pendingComplaints.length
+      });
+
+      setRecentLeaves(pendingLeaves.slice(0, 3));
+      setRecentComplaints(pendingComplaints.slice(0, 3));
+    } catch (err) {
+      console.error('Failed to load warden dashboard data:', err);
+      setError('Failed to retrieve PG metrics.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const students = db.getUsers().filter(u => u.role === 'student' && u.hostelId === user.hostelId);
-    const leaves = db.getLeaves().filter(l => {
-      const student = db.getUsers().find(u => u.id === l.studentId);
-      return student && student.hostelId === user.hostelId;
-    });
-    const visitors = db.getVisitors().filter(v => {
-      const student = db.getUsers().find(u => u.id === v.studentId);
-      return student && student.hostelId === user.hostelId;
-    });
-    const complaints = db.getComplaints().filter(c => {
-      const student = db.getUsers().find(u => u.id === c.studentId);
-      return student && student.hostelId === user.hostelId;
-    });
-
-    const pendingLeaves = leaves.filter(l => l.status === 'Pending');
-    const activeVisitors = visitors.filter(v => v.status === 'Checked In');
-    const pendingComplaints = complaints.filter(c => c.status === 'Pending' || c.status === 'In Progress');
-
-    setStats({
-      studentsCount: students.length,
-      pendingLeaves: pendingLeaves.length,
-      activeVisitors: activeVisitors.length,
-      pendingComplaints: pendingComplaints.length
-    });
-
-    setRecentLeaves(pendingLeaves.slice(0, 3));
-    setRecentComplaints(pendingComplaints.slice(0, 3));
+    if (user) {
+      fetchDashboardData();
+    }
   }, [user]);
 
-  const handleQuickLeaveAction = (leaveId, decision) => {
-    const allLeaves = db.getLeaves();
-    const updated = allLeaves.map(l => {
-      if (l.id === leaveId) {
-        return { ...l, status: decision };
-      }
-      return l;
-    });
-    db.saveLeaves(updated);
+  const handleQuickLeaveAction = async (leaveId, decision) => {
+    setError(null);
+    try {
+      const leavesRes = await client.get('/leaves');
+      const targetLeave = leavesRes.data.data.find(l => l.id === leaveId);
+      if (!targetLeave) return;
 
-    // Refresh state
-    setRecentLeaves(prev => prev.filter(l => l.id !== leaveId));
-    setStats(prev => ({
-      ...prev,
-      pendingLeaves: prev.pendingLeaves - 1
-    }));
+      const updatedLeave = { ...targetLeave, status: decision };
+      await client.put(`/leaves/${leaveId}`, updatedLeave);
+
+      // Refresh state
+      setRecentLeaves(prev => prev.filter(l => l.id !== leaveId));
+      setStats(prev => ({
+        ...prev,
+        pendingLeaves: prev.pendingLeaves - 1
+      }));
+    } catch (err) {
+      console.error('Failed to process quick leave action:', err);
+      setError('Failed to record outpass status update.');
+    }
   };
 
   return (
@@ -77,6 +110,12 @@ export default function WardenDashboard() {
           </p>
         </div>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold">
+          {error}
+        </div>
+      )}
 
       {/* Grid of operational stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

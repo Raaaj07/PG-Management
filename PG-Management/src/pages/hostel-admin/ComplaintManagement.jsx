@@ -1,13 +1,33 @@
-import React, { useState } from 'react';
-import { db } from '../../data/mockData';
-import { Search, Filter, Check, Reply, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import client from '../../api/client';
+import { Search, Filter, Check, Reply, Trash2, AlertCircle } from 'lucide-react';
 
 export const ComplaintManagement = () => {
-  const [complaints, setComplaints] = useState(() => db.getComplaints());
+  const [complaints, setComplaints] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [replyText, setReplyText] = useState('');
   const [replyingTo, setReplyingTo] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const fetchComplaints = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await client.get('/complaints');
+      setComplaints(response.data.data);
+    } catch (err) {
+      console.error('Failed to load complaints:', err);
+      setError('Failed to fetch complaints list.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchComplaints();
+  }, []);
 
   const filteredComplaints = complaints.filter(c => {
     const matchesSearch = c.title.toLowerCase().includes(search.toLowerCase()) || c.studentName.toLowerCase().includes(search.toLowerCase());
@@ -15,39 +35,64 @@ export const ComplaintManagement = () => {
     return matchesSearch && matchesFilter;
   });
 
-  const updateStatus = (complaintId, newStatus) => {
-    const updated = complaints.map(c => {
-      if (c.id === complaintId) {
-        return { ...c, status: newStatus };
-      }
-      return c;
-    });
-    setComplaints(updated);
-    db.saveComplaints(updated);
+  const updateStatus = async (complaintId, newStatus) => {
+    setError(null);
+    try {
+      const target = complaints.find(c => c.id === complaintId);
+      if (!target) return;
+      const updatedComp = { ...target, status: newStatus };
+      await client.put(`/complaints/${complaintId}`, updatedComp);
+
+      const updated = complaints.map(c => {
+        if (c.id === complaintId) {
+          return { ...c, status: newStatus };
+        }
+        return c;
+      });
+      setComplaints(updated);
+    } catch (err) {
+      console.error('Failed to update status:', err);
+      setError('Failed to update complaint status.');
+    }
   };
 
-  const handleReplySubmit = (e) => {
+  const handleReplySubmit = async (e) => {
     e.preventDefault();
     if (!replyText || !replyingTo) return;
+    setError(null);
 
-    const updated = complaints.map(c => {
-      if (c.id === replyingTo) {
-        return { ...c, reply: replyText, status: 'In Progress' };
-      }
-      return c;
-    });
-    setComplaints(updated);
-    db.saveComplaints(updated);
-    
-    setReplyText('');
-    setReplyingTo(null);
+    try {
+      const target = complaints.find(c => c.id === replyingTo);
+      if (!target) return;
+      const updatedComp = { ...target, reply: replyText, status: 'In Progress' };
+      await client.put(`/complaints/${replyingTo}`, updatedComp);
+
+      const updated = complaints.map(c => {
+        if (c.id === replyingTo) {
+          return { ...c, reply: replyText, status: 'In Progress' };
+        }
+        return c;
+      });
+      setComplaints(updated);
+      setReplyText('');
+      setReplyingTo(null);
+    } catch (err) {
+      console.error('Failed to save reply:', err);
+      setError('Failed to submit reply.');
+    }
   };
 
-  const deleteComplaint = (complaintId) => {
+  const deleteComplaint = async (complaintId) => {
     if (window.confirm('Delete this complaint entry from logs?')) {
-      const updated = complaints.filter(c => c.id !== complaintId);
-      setComplaints(updated);
-      db.saveComplaints(updated);
+      setError(null);
+      try {
+        await client.delete(`/complaints/${complaintId}`);
+        const updated = complaints.filter(c => c.id !== complaintId);
+        setComplaints(updated);
+      } catch (err) {
+        console.error('Failed to delete complaint:', err);
+        setError('Failed to delete complaint entry.');
+      }
     }
   };
 
@@ -57,6 +102,13 @@ export const ComplaintManagement = () => {
         <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Resident Complaints Redressal</h1>
         <p className="text-xs text-slate-500 font-medium">Coordinate repairs, comment on ticket statuses, or assign tasks to Wardens.</p>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-slate-955 p-4 rounded-2xl border border-slate-200 dark:border-slate-850 shadow-sm flex flex-col sm:flex-row items-center gap-4 justify-between transition-colors">
         <div className="relative w-full sm:w-80">

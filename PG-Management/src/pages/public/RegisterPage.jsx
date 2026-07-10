@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { ShieldCheck, ShieldAlert, ArrowRight, User, Mail, Lock, Phone, MapPin, Briefcase } from 'lucide-react';
 
 export const RegisterPage = () => {
@@ -9,10 +9,11 @@ export const RegisterPage = () => {
   const navigate = useNavigate();
   const [pgName, setPgName] = useState('Elite Residency PG');
 
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    password: 'admin123', // Default sandbox password
+    password: '',
     phone: '',
     gender: 'Male',
     college: '', // Acts as Affiliation (College / Company)
@@ -21,16 +22,33 @@ export const RegisterPage = () => {
   });
 
   useEffect(() => {
-    const hostels = db.getHostels();
-    if (hostels && hostels.length > 0) {
-      setPgName(hostels[0].name);
-    }
+    const fetchHostelName = async () => {
+      try {
+        const response = await client.get('/hostels');
+        if (response.data.data && response.data.data.length > 0) {
+          setPgName(response.data.data[0].name);
+        }
+      } catch (err) {
+        console.error('Failed to load hostel details:', err);
+      }
+    };
+    fetchHostelName();
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.phone || !formData.college) {
+    if (!formData.name || !formData.email || !formData.password || !formData.phone || !formData.college) {
       setError('Please fill in all the required fields.');
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
+
+    if (formData.password !== confirmPassword) {
+      setError('Passwords do not match.');
       return;
     }
 
@@ -170,6 +188,39 @@ export const RegisterPage = () => {
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                       placeholder="Permanent address details"
+                      className="w-full pl-9 pr-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-955 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-855 pb-1 mt-6">3. Security Credentials</h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Password *</label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><Lock className="w-4 h-4" /></span>
+                    <input
+                      type="password"
+                      required
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="Min 8 characters"
+                      className="w-full pl-9 pr-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-955 dark:text-white"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5">Confirm Password *</label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><Lock className="w-4 h-4" /></span>
+                    <input
+                      type="password"
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm password"
                       className="w-full pl-9 pr-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-955 dark:text-white"
                     />
                   </div>

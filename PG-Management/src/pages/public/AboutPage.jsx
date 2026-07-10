@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Target, Sparkles, MapPin, ShieldCheck, Heart } from 'lucide-react';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 
 export const AboutPage = () => {
   const [pgName, setPgName] = useState('Elite Residency PG');
   
   useEffect(() => {
-    const hostels = db.getHostels();
-    if (hostels && hostels.length > 0) {
-      setPgName(hostels[0].name);
-    }
+    const fetchHostelInfo = async () => {
+      try {
+        const response = await client.get('/hostels');
+        if (response.data.data && response.data.data.length > 0) {
+          setPgName(response.data.data[0].name);
+        }
+      } catch (err) {
+        console.error('Failed to load hostel info:', err);
+      }
+    };
+    fetchHostelInfo();
   }, []);
 
   return (

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { DoorOpen, Search, LogIn, LogOut, Clock, Plus, X, Calendar } from 'lucide-react';
+import { DoorOpen, Search, LogIn, LogOut, Clock, Plus, X, Calendar, AlertCircle } from 'lucide-react';
 
 export default function VisitorTracking() {
   const { user } = useAuth();
   const [visitors, setVisitors] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   // Check-in form modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -19,45 +21,69 @@ export default function VisitorTracking() {
     purpose: ''
   });
 
-  useEffect(() => {
-    // Load logs
-    const allVisitors = db.getVisitors();
-    const allUsers = db.getUsers();
-    
-    const hostelVisitors = allVisitors.filter(v => {
-      const student = allUsers.find(u => u.id === v.studentId);
-      return student && student.hostelId === user.hostelId;
-    });
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [visitorsRes, usersRes] = await Promise.all([
+        client.get('/visitors'),
+        client.get('/users')
+      ]);
 
-    const hostelStudents = allUsers.filter(u => u.role === 'student' && u.hostelId === user.hostelId);
+      const allVisitors = visitorsRes.data.data;
+      const allUsers = usersRes.data.data;
 
-    setVisitors(hostelVisitors);
-    setStudents(hostelStudents);
-  }, [user]);
+      const hostelVisitors = allVisitors.filter(v => {
+        const student = allUsers.find(u => u.id === v.studentId);
+        return student && student.hostelId === user.hostelId;
+      });
 
-  const handleCheckout = (id) => {
-    const updated = visitors.map(v => {
-      if (v.id === id) {
-        const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        return { ...v, status: 'Checked Out', outTime: timeNow };
-      }
-      return v;
-    });
-    setVisitors(updated);
+      const hostelStudents = allUsers.filter(u => u.role === 'student' && u.hostelId === user.hostelId);
 
-    const all = db.getVisitors();
-    const idx = all.findIndex(v => v.id === id);
-    if (idx !== -1) {
-      const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      all[idx].status = 'Checked Out';
-      all[idx].outTime = timeNow;
-      db.saveVisitors(all);
+      setVisitors(hostelVisitors);
+      setStudents(hostelStudents);
+    } catch (err) {
+      console.error('Failed to load visitors data:', err);
+      setError('Failed to fetch visitor logs.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleCheckInSubmit = (e) => {
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
+
+  const handleCheckout = async (id) => {
+    setError(null);
+    try {
+      const vRes = await client.get('/visitors');
+      const target = vRes.data.data.find(v => v.id === id);
+      if (!target) return;
+
+      const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const updatedVisitor = { ...target, status: 'Checked Out', outTime: timeNow };
+      await client.put(`/visitors/${id}`, updatedVisitor);
+
+      const updated = visitors.map(v => {
+        if (v.id === id) {
+          return { ...v, status: 'Checked Out', outTime: timeNow };
+        }
+        return v;
+      });
+      setVisitors(updated);
+    } catch (err) {
+      console.error('Failed to check out visitor:', err);
+      setError('Failed to log visitor checkout.');
+    }
+  };
+
+  const handleCheckInSubmit = async (e) => {
     e.preventDefault();
     if (!newVisitor.studentId || !newVisitor.visitorName) return;
+    setError(null);
 
     const host = students.find(s => s.id === newVisitor.studentId);
     const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -77,15 +103,18 @@ export default function VisitorTracking() {
       status: 'Checked In'
     };
 
-    const updated = [newEntry, ...visitors];
-    setVisitors(updated);
-
-    const all = db.getVisitors();
-    all.unshift(newEntry);
-    db.saveVisitors(all);
-
-    setNewVisitor({ studentId: '', visitorName: '', relation: '', purpose: '' });
-    setIsModalOpen(false);
+    setLoading(true);
+    try {
+      await client.post('/visitors', newEntry);
+      setVisitors([newEntry, ...visitors]);
+      setNewVisitor({ studentId: '', visitorName: '', relation: '', purpose: '' });
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Failed to check in visitor:', err);
+      setError('Failed to submit visitor check-in.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredVisitors = visitors.filter(v => {
@@ -116,6 +145,13 @@ export default function VisitorTracking() {
           <Plus className="w-4 h-4" /> Check In New Guest
         </button>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Main card */}
       <div className="bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-2xl overflow-hidden shadow-xs">

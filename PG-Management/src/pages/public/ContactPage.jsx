@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Phone, MapPin, Send, CheckCircle2 } from 'lucide-react';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 
 export const ContactPage = () => {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
@@ -11,13 +11,20 @@ export const ContactPage = () => {
   });
 
   useEffect(() => {
-    const hostels = db.getHostels();
-    if (hostels && hostels.length > 0) {
-      setPgInfo({
-        name: hostels[0].name,
-        address: hostels[0].address
-      });
-    }
+    const fetchHostelInfo = async () => {
+      try {
+        const response = await client.get('/hostels');
+        if (response.data.data && response.data.data.length > 0) {
+          setPgInfo({
+            name: response.data.data[0].name,
+            address: response.data.data[0].address
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load hostel info:', err);
+      }
+    };
+    fetchHostelInfo();
   }, []);
 
   const handleSubmit = (e) => {

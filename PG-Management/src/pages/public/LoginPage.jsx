@@ -1,21 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { ShieldCheck, Mail, Lock, User, Users, ShieldAlert, ArrowRight } from 'lucide-react';
 
 export const LoginPage = () => {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('admin123'); // Preset password for convenience
+  const [password, setPassword] = useState('');
   const { login, loading, error, setError } = useAuth();
   const navigate = useNavigate();
   const [pgName, setPgName] = useState('Elite Residency PG');
 
   useEffect(() => {
-    const hostels = db.getHostels();
-    if (hostels && hostels.length > 0) {
-      setPgName(hostels[0].name);
-    }
+    const fetchHostelName = async () => {
+      try {
+        const response = await client.get('/hostels');
+        if (response.data.data && response.data.data.length > 0) {
+          setPgName(response.data.data[0].name);
+        }
+      } catch (err) {
+        console.error('Failed to load hostel details:', err);
+      }
+    };
+    fetchHostelName();
   }, []);
 
   const handleLoginSubmit = async (e) => {

@@ -1,27 +1,42 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { Bell, Plus, Calendar, Trash2, X, Pin } from 'lucide-react';
+import { Bell, Plus, Calendar, Trash2, X, Pin, AlertCircle } from 'lucide-react';
 
 export default function Notifications() {
   const { user } = useAuth();
   const [notices, setNotices] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [newNotice, setNewNotice] = useState({
     title: '',
     content: '',
     target: 'Students'
   });
 
+  const fetchNotices = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await client.get('/notices');
+      setNotices(response.data.data);
+    } catch (err) {
+      console.error('Failed to load notices:', err);
+      setError('Failed to fetch announcements.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // Load announcements
-    const all = db.getNotices();
-    setNotices(all);
+    fetchNotices();
   }, []);
 
-  const handleCreateNotice = (e) => {
+  const handleCreateNotice = async (e) => {
     e.preventDefault();
     if (!newNotice.title || !newNotice.content) return;
+    setError(null);
 
     const newEntry = {
       id: `not-${Date.now()}`,
@@ -32,18 +47,30 @@ export default function Notifications() {
       target: newNotice.target
     };
 
-    const updated = [newEntry, ...notices];
-    setNotices(updated);
-    db.saveNotices(updated);
-
-    setNewNotice({ title: '', content: '', target: 'Students' });
-    setIsModalOpen(false);
+    setLoading(true);
+    try {
+      await client.post('/notices', newEntry);
+      setNotices([newEntry, ...notices]);
+      setNewNotice({ title: '', content: '', target: 'Students' });
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Failed to create notice:', err);
+      setError('Failed to publish announcement.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = (id) => {
-    const updated = notices.filter(n => n.id !== id);
-    setNotices(updated);
-    db.saveNotices(updated);
+  const handleDelete = async (id) => {
+    setError(null);
+    try {
+      await client.delete(`/notices/${id}`);
+      const updated = notices.filter(n => n.id !== id);
+      setNotices(updated);
+    } catch (err) {
+      console.error('Failed to delete notice:', err);
+      setError('Failed to remove notice bulletin.');
+    }
   };
 
   return (
@@ -63,6 +90,13 @@ export default function Notifications() {
           <Plus className="w-4 h-4" /> Publish Announcement
         </button>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertCircle className="w-4.5 h-4.5" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Grid of notices */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

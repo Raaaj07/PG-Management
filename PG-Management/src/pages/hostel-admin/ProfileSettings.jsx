@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../data/mockData';
+import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { Settings, Shield, Building, Clock, Save, Lock, AlertCircle } from 'lucide-react';
 
 export default function ProfileSettings() {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const [activeTab, setActiveTab] = useState('general');
   const [hostelData, setHostelData] = useState({
     name: '',
@@ -25,28 +25,48 @@ export default function ProfileSettings() {
     confirmPassword: ''
   });
   const [alert, setAlert] = useState({ show: false, message: '', type: 'success' });
+  const [loading, setLoading] = useState(false);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [hostelsRes, usersRes] = await Promise.all([
+        client.get('/hostels'),
+        client.get('/users')
+      ]);
+
+      const currentHostel = hostelsRes.data.data.find(h => h.id === user.hostelId);
+      if (currentHostel) {
+        setHostelData({
+          name: currentHostel.name,
+          type: currentHostel.type || 'PG',
+          address: currentHostel.address,
+          curfewTime: currentHostel.curfewTime || '10:00 PM',
+          lateFine: currentHostel.lateFine || '200',
+          guestPolicy: currentHostel.guestPolicy || 'Allowed until 8:00 PM. Overnight stay requires prior approval.'
+        });
+      }
+
+      const currentUser = usersRes.data.data.find(u => u.id === user.id);
+      if (currentUser) {
+        setAdminProfile({
+          name: currentUser.name,
+          email: currentUser.email,
+          phone: currentUser.phone || '+91 99999 88888'
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load settings data:', err);
+      showNotification('Failed to load profile settings.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Fetch current hostel info
-    const hostels = db.getHostels();
-    const currentHostel = hostels.find(h => h.id === user.hostelId);
-    if (currentHostel) {
-      setHostelData({
-        name: currentHostel.name,
-        type: currentHostel.type || 'PG',
-        address: currentHostel.address,
-        curfewTime: currentHostel.curfewTime || '10:00 PM',
-        lateFine: currentHostel.lateFine || '200',
-        guestPolicy: currentHostel.guestPolicy || 'Allowed until 8:00 PM. Overnight stay requires prior approval.'
-      });
+    if (user) {
+      fetchData();
     }
-    
-    // Fetch admin user profile details
-    setAdminProfile({
-      name: user.name,
-      email: user.email,
-      phone: user.phone || '+91 99999 88888'
-    });
   }, [user]);
 
   const showNotification = (msg, type = 'success') => {
@@ -54,15 +74,28 @@ export default function ProfileSettings() {
     setTimeout(() => setAlert({ show: false, message: '', type: 'success' }), 4000);
   };
 
-  const handleSaveGeneral = (e) => {
+  const handleSaveGeneral = async (e) => {
     e.preventDefault();
+    setLoading(true);
     
-    // Save hostel edits
-    const hostels = db.getHostels();
-    const idx = hostels.findIndex(h => h.id === user.hostelId);
-    if (idx !== -1) {
-      hostels[idx] = {
-        ...hostels[idx],
+    try {
+      // Fetch fresh list
+      const [hostelsRes, usersRes] = await Promise.all([
+        client.get('/hostels'),
+        client.get('/users')
+      ]);
+
+      const currentHostel = hostelsRes.data.data.find(h => h.id === user.hostelId);
+      const currentUser = usersRes.data.data.find(u => u.id === user.id);
+
+      if (!currentHostel || !currentUser) {
+        showNotification('Record matching failed.', 'error');
+        setLoading(false);
+        return;
+      }
+
+      const updatedHostel = {
+        ...currentHostel,
         name: hostelData.name,
         type: hostelData.type,
         address: hostelData.address,
@@ -70,28 +103,32 @@ export default function ProfileSettings() {
         lateFine: hostelData.lateFine,
         guestPolicy: hostelData.guestPolicy
       };
-      db.saveHostels(hostels);
-    }
 
-    // Save admin user name/profile changes
-    const users = db.getUsers();
-    const userIdx = users.findIndex(u => u.id === user.id);
-    if (userIdx !== -1) {
-      users[userIdx] = {
-        ...users[userIdx],
+      const updatedUser = {
+        ...currentUser,
         name: adminProfile.name,
         phone: adminProfile.phone
       };
-      db.saveUsers(users);
-      
-      // Update local storage session
-      localStorage.setItem('auth_user', JSON.stringify(users[userIdx]));
-    }
 
-    showNotification('General settings and hostel details updated successfully!');
+      await Promise.all([
+        client.put(`/hostels/${user.hostelId}`, updatedHostel),
+        client.put(`/users/${user.id}`, updatedUser)
+      ]);
+
+      // Save to active session
+      localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+
+      showNotification('General settings and hostel details updated successfully!');
+    } catch (err) {
+      console.error('Failed to update settings:', err);
+      showNotification('Failed to update settings in database.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUpdatePassword = (e) => {
+  const handleUpdatePassword = async (e) => {
     e.preventDefault();
     if (!passwordForm.newPassword || !passwordForm.confirmPassword) {
       showNotification('Please fill in password fields.', 'error');
@@ -101,10 +138,18 @@ export default function ProfileSettings() {
       showNotification('New password and confirmation do not match.', 'error');
       return;
     }
+    setLoading(true);
 
-    // Simulate password updates
-    showNotification('Password updated successfully! (Sandbox simulation)');
-    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    try {
+      await client.put(`/users/${user.id}`, { password: passwordForm.newPassword });
+      showNotification('Password updated successfully!');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      console.error('Failed to update password:', err);
+      showNotification('Failed to update password in database.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

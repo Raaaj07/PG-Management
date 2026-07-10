@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { db } from '../data/mockData';
+import client from '../api/client';
 import { Menu, X, Sun, Moon, Home, Users, Mail, Compass } from 'lucide-react';
 
 export const PublicLayout = () => {
@@ -14,10 +14,17 @@ export const PublicLayout = () => {
   const [pgName, setPgName] = useState('Elite Residency PG');
 
   useEffect(() => {
-    const hostels = db.getHostels();
-    if (hostels && hostels.length > 0) {
-      setPgName(hostels[0].name);
-    }
+    const fetchHostelName = async () => {
+      try {
+        const response = await client.get('/hostels');
+        if (response.data.data && response.data.data.length > 0) {
+          setPgName(response.data.data[0].name);
+        }
+      } catch (err) {
+        console.error('Failed to load hostel name:', err);
+      }
+    };
+    fetchHostelName();
   }, []);
 
   const handleNavClick = () => {
