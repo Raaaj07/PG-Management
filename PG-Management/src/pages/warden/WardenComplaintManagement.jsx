@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { ShieldAlert, Search, Filter, Clock, CheckCircle2, MessageSquare, Save, X, AlertCircle } from 'lucide-react';
+import { Modal } from '../../components/ui/Modal';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { EmptyState } from '../../components/ui/PageHeader';
 
 export default function WardenComplaintManagement() {
   const { user } = useAuth();
@@ -17,6 +23,7 @@ export default function WardenComplaintManagement() {
     status: '',
     reply: ''
   });
+  const [saving, setSaving] = useState(false);
 
   const fetchComplaints = async () => {
     setLoading(true);
@@ -59,6 +66,7 @@ export default function WardenComplaintManagement() {
     e.preventDefault();
     if (!selectedComp) return;
     setError(null);
+    setSaving(true);
 
     try {
       const updatedComp = { ...selectedComp, status: actionForm.status, reply: actionForm.reply };
@@ -73,9 +81,13 @@ export default function WardenComplaintManagement() {
       });
       setComplaints(updated);
       setSelectedComp(null);
+      toast.success('Resolution saved');
     } catch (err) {
       console.error('Failed to resolve complaint:', err);
       setError('Failed to update complaint resolution status.');
+      toast.error('Failed to update complaint resolution status.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -114,10 +126,16 @@ export default function WardenComplaintManagement() {
           { label: 'In Progress / Maintenance', value: complaints.filter(c => c.status === 'In Progress').length, color: 'border-indigo-200/50 dark:border-indigo-950/20 text-indigo-650 dark:text-indigo-400 bg-indigo-500/5' },
           { label: 'Completed Resolutions', value: complaints.filter(c => c.status === 'Resolved').length, color: 'border-emerald-200/50 dark:border-emerald-955/20 text-emerald-555 dark:text-emerald-450 bg-emerald-550/5' }
         ].map((item, i) => (
-          <div key={i} className={`p-4 border rounded-2xl flex flex-col justify-center ${item.color}`}>
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: i * 0.05 }}
+            className={`p-4 border rounded-2xl flex flex-col justify-center ${item.color}`}
+          >
             <span className="text-[10px] font-bold uppercase tracking-wider opacity-85">{item.label}</span>
             <span className="text-2xl font-extrabold mt-1">{item.value}</span>
-          </div>
+          </motion.div>
         ))}
       </div>
 
@@ -158,23 +176,13 @@ export default function WardenComplaintManagement() {
         {/* Complaints Ticket Queue */}
         <div className="divide-y divide-slate-100 dark:divide-slate-855">
           {filteredComplaints.length === 0 ? (
-            <div className="p-12 text-center text-xs text-slate-450 dark:text-slate-550">
-              No complaint tickets match the filter.
-            </div>
+            <EmptyState icon={ShieldAlert} title="No matching tickets" description="Try adjusting your search or status filter." />
           ) : (
             filteredComplaints.map(comp => (
               <div key={comp.id} className="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-slate-50/30 dark:hover:bg-slate-900/10 transition-colors">
                 <div className="space-y-2 max-w-xl">
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                      comp.priority === 'High'
-                        ? 'bg-red-500/15 text-red-500'
-                        : comp.priority === 'Medium'
-                        ? 'bg-indigo-55/15 text-indigo-650'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                    }`}>
-                      {comp.priority} Priority
-                    </span>
+                    <Badge tone={comp.priority === 'High' ? 'danger' : comp.priority === 'Medium' ? 'indigo' : 'neutral'} dot={false}>{comp.priority} Priority</Badge>
                     <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono uppercase">{comp.id}</span>
                   </div>
 
@@ -200,15 +208,7 @@ export default function WardenComplaintManagement() {
                 </div>
 
                 <div className="flex items-center gap-3 shrink-0 self-end md:self-auto">
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                    comp.status === 'Resolved'
-                      ? 'bg-emerald-50 dark:bg-emerald-955/35 text-emerald-650 dark:text-emerald-450'
-                      : comp.status === 'In Progress'
-                      ? 'bg-indigo-50 dark:bg-indigo-955/35 text-indigo-650'
-                      : 'bg-red-50 dark:bg-red-955/35 text-red-650'
-                  }`}>
-                    {comp.status}
-                  </span>
+                  <Badge status={comp.status} />
 
                   <button
                     onClick={() => handleOpenActionModal(comp)}
@@ -224,26 +224,28 @@ export default function WardenComplaintManagement() {
       </div>
 
       {/* Action / Resolve Modal */}
-      {selectedComp && (
-        <div className="fixed inset-0 z-55 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-extrabold text-base">Resolve Complaint ticket</h3>
-              <button
-                onClick={() => setSelectedComp(null)}
-                className="text-slate-405 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="text-xs space-y-2 pb-2 border-b border-slate-100 dark:border-slate-850">
+      <Modal
+        open={!!selectedComp}
+        onOpenChange={(v) => !v && setSelectedComp(null)}
+        title="Resolve Complaint Ticket"
+        icon={MessageSquare}
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setSelectedComp(null)} disabled={saving}>Cancel</Button>
+            <Button type="submit" form="resolve-complaint-form" loading={saving}>Save Resolution</Button>
+          </>
+        }
+      >
+        {selectedComp && (
+        <>
+            <div className="text-xs space-y-2 pb-4 mb-4 border-b border-slate-100 dark:border-slate-850">
               <p className="text-slate-400 font-bold">Ticket: {selectedComp.id}</p>
               <h4 className="font-bold text-slate-900 dark:text-white">{selectedComp.title}</h4>
               <p className="text-slate-600 dark:text-slate-350">{selectedComp.description}</p>
             </div>
 
-            <form onSubmit={handleSaveAction} className="space-y-4">
+            <form id="resolve-complaint-form" onSubmit={handleSaveAction} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                   Update Ticket Status
@@ -273,25 +275,10 @@ export default function WardenComplaintManagement() {
                 />
               </div>
 
-              <div className="pt-2 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setSelectedComp(null)}
-                  className="w-full py-2 border border-slate-350 dark:border-slate-800 text-slate-655 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-900 transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="w-full py-2 bg-indigo-650 hover:bg-indigo-755 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/10 cursor-pointer"
-                >
-                  Save Resolution
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+        </>
+        )}
+      </Modal>
     </div>
   );
 }

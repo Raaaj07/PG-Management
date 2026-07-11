@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { Users, Search, LogIn, LogOut, Calendar, Plus, Clock, UserCheck, X, AlertCircle } from 'lucide-react';
+import { Modal } from '../../components/ui/Modal';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
 
 export default function VisitorManagement() {
   const { user } = useAuth();
@@ -74,9 +78,11 @@ export default function VisitorManagement() {
         return v;
       });
       setVisitors(updated);
+      toast.success(`${target.visitorName} checked out`);
     } catch (err) {
       console.error('Failed to checkout visitor:', err);
       setError('Failed to update visitor checkout status.');
+      toast.error('Failed to update visitor checkout status.');
     }
   };
 
@@ -109,9 +115,11 @@ export default function VisitorManagement() {
       setVisitors([newEntry, ...visitors]);
       setNewVisitor({ studentId: '', visitorName: '', relation: '', purpose: '' });
       setIsModalOpen(false);
+      toast.success('Visitor checked in');
     } catch (err) {
       console.error('Failed to add visitor:', err);
       setError('Failed to check in guest.');
+      toast.error('Failed to check in guest.');
     } finally {
       setLoading(false);
     }
@@ -138,12 +146,9 @@ export default function VisitorManagement() {
             Monitor and record entries/exits for host guests at {user?.hostelName || 'your property'}.
           </p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/10 cursor-pointer self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" /> Record New Entry
-        </button>
+        <Button icon={Plus} onClick={() => setIsModalOpen(true)} className="self-start sm:self-auto">
+          Record New Entry
+        </Button>
       </div>
 
       {error && (
@@ -286,13 +291,7 @@ export default function VisitorManagement() {
                       {vis.purpose}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        vis.status === 'Checked In'
-                          ? 'bg-indigo-50 dark:bg-indigo-955/35 text-indigo-650 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-900/30'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-400'
-                      }`}>
-                        {vis.status}
-                      </span>
+                      <Badge tone={vis.status === 'Checked In' ? 'indigo' : 'neutral'}>{vis.status}</Badge>
                     </td>
                     <td className="px-6 py-4 text-right">
                       {vis.status === 'Checked In' ? (
@@ -315,20 +314,20 @@ export default function VisitorManagement() {
       </div>
 
       {/* Modal for New Entry */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-55 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-extrabold text-base">Record Visitor Entry</h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-405 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddVisitor} className="space-y-4">
+      <Modal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        title="Record Visitor Entry"
+        icon={UserCheck}
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setIsModalOpen(false)} disabled={loading}>Cancel</Button>
+            <Button type="submit" form="add-visitor-form" loading={loading}>Check In Visitor</Button>
+          </>
+        }
+      >
+            <form id="add-visitor-form" onSubmit={handleAddVisitor} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                   Visiting Resident *
@@ -388,26 +387,8 @@ export default function VisitorManagement() {
                   className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none text-slate-850 dark:text-slate-100"
                 />
               </div>
-
-              <div className="pt-2 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="w-full py-2 border border-slate-350 dark:border-slate-800 text-slate-650 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-900 transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="w-full py-2 bg-indigo-650 hover:bg-indigo-750 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/10 cursor-pointer"
-                >
-                  Check In Visitor
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }

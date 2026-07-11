@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import client from '../../api/client';
 import { 
   Key, UserMinus, LayoutGrid, List, Bed, Home, Plus, 
   Trash2, UserPlus, Sparkles, AlertTriangle, AlertCircle 
 } from 'lucide-react';
+import { Modal } from '../../components/ui/Modal';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { Button } from '../../components/ui/Button';
 
 const ROOM_IMAGES = {
   '101': 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=600&auto=format&fit=crop&q=60',
@@ -27,6 +31,9 @@ export const RoomAllocation = () => {
   const [targetStudentId, setTargetStudentId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [confirmDeallocate, setConfirmDeallocate] = useState(null); // { studentId, roomNo }
+  const [deallocating, setDeallocating] = useState(false);
+  const [submittingAllocation, setSubmittingAllocation] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -52,31 +59,37 @@ export const RoomAllocation = () => {
     fetchData();
   }, []);
 
-  const deallocateRoom = async (studentId, roomNo) => {
-    if (window.confirm(`Are you sure you want to deallocate Room ${roomNo} for this resident?`)) {
-      setError(null);
-      try {
-        const [usersRes, roomsRes] = await Promise.all([
-          client.get('/users'),
-          client.get('/rooms')
-        ]);
-        const targetStudent = usersRes.data.data.find(u => u.id === studentId);
-        const targetRoom = roomsRes.data.data.find(r => r.roomNo === roomNo);
-        if (!targetStudent || !targetRoom) return;
+  const deallocateRoom = async () => {
+    if (!confirmDeallocate) return;
+    const { studentId, roomNo } = confirmDeallocate;
+    setError(null);
+    setDeallocating(true);
+    try {
+      const [usersRes, roomsRes] = await Promise.all([
+        client.get('/users'),
+        client.get('/rooms')
+      ]);
+      const targetStudent = usersRes.data.data.find(u => u.id === studentId);
+      const targetRoom = roomsRes.data.data.find(r => r.roomNo === roomNo);
+      if (!targetStudent || !targetRoom) return;
 
-        const updatedStudent = { ...targetStudent, roomId: null, roomNo: 'Unallocated' };
-        const updatedRoom = { ...targetRoom, occupied: Math.max(0, targetRoom.occupied - 1) };
+      const updatedStudent = { ...targetStudent, roomId: null, roomNo: 'Unallocated' };
+      const updatedRoom = { ...targetRoom, occupied: Math.max(0, targetRoom.occupied - 1) };
 
-        await Promise.all([
-          client.put(`/users/${studentId}`, updatedStudent),
-          client.put(`/rooms/${targetRoom.id}`, updatedRoom)
-        ]);
+      await Promise.all([
+        client.put(`/users/${studentId}`, updatedStudent),
+        client.put(`/rooms/${targetRoom.id}`, updatedRoom)
+      ]);
 
-        fetchData();
-      } catch (err) {
-        console.error('Failed to deallocate room:', err);
-        setError('Failed to deallocate room.');
-      }
+      await fetchData();
+      toast.success('Room deallocated');
+      setConfirmDeallocate(null);
+    } catch (err) {
+      console.error('Failed to deallocate room:', err);
+      setError('Failed to deallocate room.');
+      toast.error('Failed to deallocate room.');
+    } finally {
+      setDeallocating(false);
     }
   };
 
@@ -105,6 +118,7 @@ export const RoomAllocation = () => {
   const handleConfirmAllocation = async (e) => {
     e.preventDefault();
     setError(null);
+    setSubmittingAllocation(true);
     try {
       const [usersRes, roomsRes] = await Promise.all([
         client.get('/users'),
@@ -144,9 +158,13 @@ export const RoomAllocation = () => {
       setSelectedStudent(null);
       setSelectedRoom(null);
       fetchData();
+      toast.success('Room allocated successfully');
     } catch (err) {
       console.error('Failed to allocate room:', err);
       setError('Failed to save room allocation.');
+      toast.error('Failed to save room allocation.');
+    } finally {
+      setSubmittingAllocation(false);
     }
   };
 
@@ -295,7 +313,7 @@ export const RoomAllocation = () => {
                                 <span className="font-bold text-xs text-slate-900 dark:text-white">{student.name}</span>
                               </div>
                               <button
-                                onClick={() => deallocateRoom(student.id, room.roomNo)}
+                                onClick={() => setConfirmDeallocate({ studentId: student.id, roomNo: room.roomNo })}
                                 className="p-1 hover:bg-red-55/20 text-red-500 hover:text-red-600 rounded-md cursor-pointer transition-colors"
                                 title="Deallocate Room"
                               >
@@ -374,7 +392,7 @@ export const RoomAllocation = () => {
                       <td className="p-4 text-right">
                         {hasRoom ? (
                           <button
-                            onClick={() => deallocateRoom(student.id, student.roomNo)}
+                            onClick={() => setConfirmDeallocate({ studentId: student.id, roomNo: student.roomNo })}
                             className="px-3 py-1.5 border border-red-200 hover:bg-red-50 text-red-650 rounded-xl text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer transition-all"
                           >
                             <UserMinus className="w-3.5 h-3.5" /> Deallocate Room
@@ -398,18 +416,40 @@ export const RoomAllocation = () => {
       )}
 
       {/* Allocate Room Modal (Unified) */}
-      {showAllocateModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-955 rounded-3xl border border-slate-200 dark:border-slate-850 p-6 sm:p-8 max-w-sm w-full shadow-2xl relative">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1.5">Allocate Resident</h3>
-            <p className="text-xs text-slate-550 dark:text-slate-400 mb-6 font-semibold">
-              {selectedStudent 
-                ? `Choose an available room to allocate to ${selectedStudent.name}.`
-                : `Choose an unallocated resident to assign to Room ${selectedRoom?.roomNo}.`
+      <Modal
+        open={showAllocateModal}
+        onOpenChange={(v) => { if (!v) { setShowAllocateModal(false); setSelectedStudent(null); setSelectedRoom(null); } }}
+        title="Allocate Resident"
+        description={
+          selectedStudent
+            ? `Choose an available room to allocate to ${selectedStudent.name}.`
+            : `Choose an unallocated resident to assign to Room ${selectedRoom?.roomNo}.`
+        }
+        icon={Key}
+        size="sm"
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              onClick={() => { setShowAllocateModal(false); setSelectedStudent(null); setSelectedRoom(null); }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="allocate-room-form"
+              loading={submittingAllocation}
+              disabled={
+                (selectedStudent && vacantRooms.length === 0) ||
+                (selectedRoom && unallocatedStudents.length === 0)
               }
-            </p>
-
-            <form onSubmit={handleConfirmAllocation} className="space-y-4">
+            >
+              Confirm Allocation
+            </Button>
+          </>
+        }
+      >
+            <form id="allocate-room-form" onSubmit={handleConfirmAllocation} className="space-y-4">
               {/* Scenario 1: Allocating a selected student to a room */}
               {selectedStudent && (
                 <div>
@@ -457,34 +497,18 @@ export const RoomAllocation = () => {
                   )}
                 </div>
               )}
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-850">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAllocateModal(false);
-                    setSelectedStudent(null);
-                    setSelectedRoom(null);
-                  }}
-                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-655"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={
-                    (selectedStudent && vacantRooms.length === 0) || 
-                    (selectedRoom && unallocatedStudents.length === 0)
-                  }
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-xs font-bold shadow-md cursor-pointer"
-                >
-                  Confirm Allocation
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
+
+      <ConfirmDialog
+        open={!!confirmDeallocate}
+        onOpenChange={(v) => !v && setConfirmDeallocate(null)}
+        title="Deallocate this room?"
+        description={confirmDeallocate ? `This will vacate Room ${confirmDeallocate.roomNo} for this resident.` : ''}
+        confirmLabel="Deallocate"
+        loading={deallocating}
+        onConfirm={deallocateRoom}
+      />
     </div>
   );
 };

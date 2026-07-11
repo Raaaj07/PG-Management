@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { User, Phone, Shield, ShieldCheck, Mail, Building, MapPin, Save, AlertCircle } from 'lucide-react';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { Button } from '../../components/ui/Button';
 
 export default function TenantProfile() {
   const { user, setUser } = useAuth();
@@ -64,10 +67,12 @@ export default function TenantProfile() {
       setUser(updatedUser);
 
       setSuccessMsg('Profile contacts updated successfully!');
+      toast.success('Profile contacts updated');
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
       console.error('Failed to update profile:', err);
       setError('Failed to update profile details.');
+      toast.error('Failed to update profile details.');
     } finally {
       setLoading(false);
     }
@@ -76,11 +81,11 @@ export default function TenantProfile() {
   const handleResetPassword = async (e) => {
     e.preventDefault();
     if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-      alert('Please fill in all password fields.');
+      toast.error('Please fill in all password fields.');
       return;
     }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      alert('New passwords do not match!');
+      toast.error('New passwords do not match!');
       return;
     }
     setError(null);
@@ -92,12 +97,14 @@ export default function TenantProfile() {
         newPassword: passwordForm.newPassword
       });
       setSuccessMsg('Password updated successfully!');
+      toast.success('Password updated successfully');
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
       console.error('Failed to update password:', err);
       const errMsg = err.response?.data?.error || 'Failed to update password.';
       setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }
@@ -105,13 +112,10 @@ export default function TenantProfile() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      {/* Top Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">My Profile Details</h1>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Review room allocation specs, update emergency contacts, and manage portal passwords.
-        </p>
-      </div>
+      <PageHeader
+        title="My Profile Details"
+        subtitle="Review room allocation specs, update emergency contacts, and manage portal passwords."
+      />
 
       {/* Success Banner */}
       {successMsg && (
@@ -204,12 +208,7 @@ export default function TenantProfile() {
               </div>
 
               <div className="pt-4 border-t border-slate-100 dark:border-slate-850">
-                <button
-                  type="submit"
-                  className="flex items-center gap-2 px-5 py-2.5 bg-indigo-650 hover:bg-indigo-755 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/10 cursor-pointer"
-                >
-                  <Save className="w-4 h-4" /> Save Contacts
-                </button>
+                <Button type="submit" icon={Save} loading={loading}>Save Contacts</Button>
               </div>
             </form>
           </div>
@@ -261,12 +260,7 @@ export default function TenantProfile() {
               </div>
 
               <div className="pt-4 border-t border-slate-100 dark:border-slate-850">
-                <button
-                  type="submit"
-                  className="flex items-center gap-2 px-5 py-2.5 bg-indigo-650 hover:bg-indigo-755 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/10 cursor-pointer"
-                >
-                  <ShieldCheck className="w-4 h-4" /> Save New Password
-                </button>
+                <Button type="submit" icon={ShieldCheck} loading={loading}>Save New Password</Button>
               </div>
             </form>
           </div>

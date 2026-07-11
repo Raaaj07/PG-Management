@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { ShieldCheck, Users, Bed, CreditCard, ClipboardList, Send, KeyRound } from 'lucide-react';
 
 export const FeaturesPage = () => {
@@ -59,9 +60,14 @@ export const FeaturesPage = () => {
                 {section.features.map((f, fIdx) => {
                   const Icon = f.icon;
                   return (
-                    <div
+                    <motion.div
                       key={fIdx}
-                      className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-850 flex gap-4 items-start shadow-sm hover:shadow-md transition-all"
+                      initial={{ opacity: 0, y: 16 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, margin: '-40px' }}
+                      transition={{ duration: 0.35, delay: (fIdx % 4) * 0.06 }}
+                      whileHover={{ y: -3 }}
+                      className="bg-white dark:bg-slate-950 p-6 rounded-2xl border border-slate-200 dark:border-slate-850 flex gap-4 items-start shadow-sm hover:shadow-lg transition-all"
                     >
                       <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 shrink-0">
                         <Icon className="w-5 h-5" />
@@ -70,7 +76,7 @@ export const FeaturesPage = () => {
                         <h3 className="font-bold text-base text-slate-900 dark:text-white">{f.name}</h3>
                         <p className="text-xs sm:text-sm text-slate-550 dark:text-slate-400 mt-2 leading-relaxed">{f.desc}</p>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>

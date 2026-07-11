@@ -3,6 +3,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { AppRoutes } from './routes/AppRoutes';
+import { AppToaster } from './components/ui/Toaster';
 import axios from 'axios';
 
 function App() {
@@ -138,6 +139,7 @@ function App() {
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
+          <AppToaster />
           <AppRoutes />
         </AuthProvider>
       </ThemeProvider>

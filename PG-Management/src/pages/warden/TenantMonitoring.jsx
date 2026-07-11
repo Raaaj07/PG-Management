@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { Eye, Search, CheckCircle2, Moon, Sun, AlertCircle } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
 
 export const TenantMonitoring = () => {
   const { user } = useAuth();
@@ -71,11 +74,15 @@ export const TenantMonitoring = () => {
   };
 
   const handleSaveRollCall = () => {
-    setSaveStatus('Saving roll call...');
-    setTimeout(() => {
-      setSaveStatus('Roll call saved successfully! Attendance records logged to server.');
-      setTimeout(() => setSaveStatus(''), 3000);
-    }, 800);
+    setSaveStatus('saving');
+    toast.promise(
+      new Promise((resolve) => setTimeout(resolve, 800)),
+      {
+        loading: 'Saving roll call...',
+        success: 'Roll call saved — attendance records logged',
+        error: 'Failed to save roll call',
+      }
+    ).finally(() => setSaveStatus(''));
   };
 
   const filteredTenants = tenants.filter(t => {
@@ -119,14 +126,6 @@ export const TenantMonitoring = () => {
         </div>
       </div>
 
-      {/* Save Status Alert */}
-      {saveStatus && (
-        <div className="p-4 bg-emerald-50 dark:bg-emerald-955/35 text-emerald-650 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/30 rounded-xl text-xs font-bold flex items-center gap-2">
-          <CheckCircle2 className="w-4.5 h-4.5" />
-          <span>{saveStatus}</span>
-        </div>
-      )}
-
       {error && (
         <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
           <AlertCircle className="w-4.5 h-4.5" />
@@ -151,12 +150,9 @@ export const TenantMonitoring = () => {
             />
           </div>
 
-          <button
-            onClick={handleSaveRollCall}
-            className="w-full sm:w-auto px-5 py-2 bg-indigo-650 hover:bg-indigo-750 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/10 cursor-pointer"
-          >
+          <Button onClick={handleSaveRollCall} loading={saveStatus === 'saving'} className="w-full sm:w-auto">
             Save Roll Call Report
-          </button>
+          </Button>
         </div>
 
         {/* Tenants Table */}
@@ -199,13 +195,7 @@ export const TenantMonitoring = () => {
                       <span className="font-semibold text-slate-800 dark:text-slate-200">Room {tenant.roomNo}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide ${
-                        tenant.currentStatus === 'In PG'
-                          ? 'bg-emerald-50 dark:bg-emerald-955/35 text-emerald-650 dark:text-emerald-400'
-                          : 'bg-amber-50 dark:bg-amber-955/35 text-amber-650 dark:text-amber-405'
-                      }`}>
-                        {tenant.currentStatus}
-                      </span>
+                      <Badge tone={tenant.currentStatus === 'In PG' ? 'success' : 'warning'}>{tenant.currentStatus}</Badge>
                     </td>
                     <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{tenant.college || 'N/A'}</td>
                     <td className="px-6 py-4 text-slate-505 font-mono">{tenant.phone || 'N/A'}</td>

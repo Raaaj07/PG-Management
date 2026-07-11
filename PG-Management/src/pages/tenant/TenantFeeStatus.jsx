@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { Wallet, Search, CreditCard, CheckCircle, Clock, AlertCircle, ArrowUpRight, X } from 'lucide-react';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { Badge } from '../../components/ui/Badge';
+import { Modal } from '../../components/ui/Modal';
+import { Button } from '../../components/ui/Button';
+import { EmptyState } from '../../components/ui/PageHeader';
 
 export default function TenantFeeStatus() {
   const { user } = useAuth();
@@ -63,6 +70,7 @@ export default function TenantFeeStatus() {
       await client.put(`/fees/${selectedInvoice.id}`, updatedFee);
 
       setPaymentSuccess(true);
+      toast.success('Payment submitted for review');
       
       // Update local invoice state
       const updated = fees.map(f => {
@@ -79,6 +87,7 @@ export default function TenantFeeStatus() {
     } catch (err) {
       console.error('Failed to pay invoice:', err);
       setError('Failed to process payment with server.');
+      toast.error('Failed to process payment with server.');
       setSelectedInvoice(null);
     } finally {
       setPaymentLoading(false);
@@ -92,13 +101,10 @@ export default function TenantFeeStatus() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">Finances & Rent Invoices</h1>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Inspect monthly rental ledger sheets, trace payment dates, and complete outstanding dues online.
-        </p>
-      </div>
+      <PageHeader
+        title="Finances & Rent Invoices"
+        subtitle="Inspect monthly rental ledger sheets, trace payment dates, and complete outstanding dues online."
+      />
 
       {error && (
         <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
@@ -127,14 +133,18 @@ export default function TenantFeeStatus() {
       {/* Invoice Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredFees.length === 0 ? (
-          <div className="col-span-full bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 p-12 rounded-2xl text-center text-slate-450 dark:text-slate-500">
-            No invoices found for this category.
+          <div className="col-span-full bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-2xl">
+            <EmptyState icon={Wallet} title="No invoices found" description="Nothing to show for this category yet." />
           </div>
         ) : (
-          filteredFees.map(invoice => (
-            <div
+          filteredFees.map((invoice, idx) => (
+            <motion.div
               key={invoice.id}
-              className="bg-white dark:bg-slate-955 border border-slate-250/60 dark:border-slate-850 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:shadow-md transition-all group"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: (idx % 6) * 0.05 }}
+              whileHover={{ y: -3 }}
+              className="bg-white dark:bg-slate-955 border border-slate-250/60 dark:border-slate-850 rounded-2xl p-5 shadow-xs flex flex-col justify-between hover:shadow-lg transition-all group"
             >
               <div className="space-y-4">
                 <div className="flex justify-between items-start">
@@ -142,15 +152,7 @@ export default function TenantFeeStatus() {
                     <span className="text-[10px] text-slate-400 dark:text-slate-550 font-mono uppercase block">{invoice.invoiceNo}</span>
                     <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mt-0.5">{invoice.month} Rent Charge</h4>
                   </div>
-                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                    invoice.status === 'Paid'
-                      ? 'bg-emerald-50 dark:bg-emerald-955/35 text-emerald-650 dark:text-emerald-450'
-                      : invoice.status === 'Unpaid'
-                      ? 'bg-red-50 dark:bg-red-955/35 text-red-655'
-                      : 'bg-indigo-50 dark:bg-indigo-955/35 text-indigo-650'
-                  }`}>
-                    {invoice.status}
-                  </span>
+                  <Badge status={invoice.status} />
                 </div>
 
                 <div className="flex justify-between items-end border-t border-slate-100 dark:border-slate-850 pt-3">
@@ -177,26 +179,31 @@ export default function TenantFeeStatus() {
                   </button>
                 </div>
               )}
-            </div>
+            </motion.div>
           ))
         )}
       </div>
 
       {/* Simulated Checkout Sheet / Modal */}
-      {selectedInvoice && (
-        <div className="fixed inset-0 z-55 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-extrabold text-base">Clear Rent Outstanding</h3>
-              <button
-                onClick={() => setSelectedInvoice(null)}
-                className="text-slate-405 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {paymentSuccess ? (
+      <Modal
+        open={!!selectedInvoice}
+        onOpenChange={(v) => !v && setSelectedInvoice(null)}
+        title="Clear Rent Outstanding"
+        icon={CreditCard}
+        size="sm"
+        footer={
+          !paymentSuccess ? (
+            <>
+              <Button variant="ghost" onClick={() => setSelectedInvoice(null)} disabled={paymentLoading}>Cancel</Button>
+              <Button type="submit" form="pay-invoice-form" loading={paymentLoading}>
+                {paymentLoading ? 'Verifying Gateway...' : 'Confirm UPI/Card payment'}
+              </Button>
+            </>
+          ) : null
+        }
+      >
+        {selectedInvoice && (
+            paymentSuccess ? (
               <div className="text-center py-8 space-y-3">
                 <div className="inline-flex p-3 bg-emerald-500/10 text-emerald-500 rounded-full animate-bounce">
                   <CheckCircle className="w-12 h-12" />
@@ -207,7 +214,7 @@ export default function TenantFeeStatus() {
                 </p>
               </div>
             ) : (
-              <form onSubmit={handlePaymentSubmit} className="space-y-4">
+              <form id="pay-invoice-form" onSubmit={handlePaymentSubmit} className="space-y-4">
                 <div className="p-3 bg-indigo-50/20 dark:bg-indigo-955/20 border border-indigo-200/50 dark:border-indigo-900/25 rounded-xl text-xs flex justify-between items-center">
                   <div>
                     <span className="text-slate-500 font-bold">Month: {selectedInvoice.month}</span>
@@ -307,27 +314,10 @@ export default function TenantFeeStatus() {
                   </div>
                 )}
 
-                <div className="pt-2 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedInvoice(null)}
-                    className="w-full py-2 border border-slate-350 dark:border-slate-800 text-slate-655 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-900 transition-all cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={paymentLoading}
-                    className="w-full py-2 bg-indigo-650 hover:bg-indigo-755 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/10 cursor-pointer disabled:opacity-50"
-                  >
-                    {paymentLoading ? 'Verifying Gateway...' : `Confirm UPI/Card payment`}
-                  </button>
-                </div>
               </form>
-            )}
-          </div>
-        </div>
-      )}
+            )
+        )}
+      </Modal>
     </div>
   );
 }

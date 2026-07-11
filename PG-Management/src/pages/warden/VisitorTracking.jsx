@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { DoorOpen, Search, LogIn, LogOut, Clock, Plus, X, Calendar, AlertCircle } from 'lucide-react';
+import { Modal } from '../../components/ui/Modal';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
 
 export default function VisitorTracking() {
   const { user } = useAuth();
@@ -74,9 +78,11 @@ export default function VisitorTracking() {
         return v;
       });
       setVisitors(updated);
+      toast.success('Visitor checked out');
     } catch (err) {
       console.error('Failed to check out visitor:', err);
       setError('Failed to log visitor checkout.');
+      toast.error('Failed to log visitor checkout.');
     }
   };
 
@@ -109,9 +115,11 @@ export default function VisitorTracking() {
       setVisitors([newEntry, ...visitors]);
       setNewVisitor({ studentId: '', visitorName: '', relation: '', purpose: '' });
       setIsModalOpen(false);
+      toast.success('Visitor checked in');
     } catch (err) {
       console.error('Failed to check in visitor:', err);
       setError('Failed to submit visitor check-in.');
+      toast.error('Failed to submit visitor check-in.');
     } finally {
       setLoading(false);
     }
@@ -138,12 +146,9 @@ export default function VisitorTracking() {
             Log security desk entries, guest verification, and timestamp exits at the main gate.
           </p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-650 text-white rounded-xl text-xs font-bold hover:bg-indigo-755 transition-all shadow-md shadow-indigo-600/10 cursor-pointer self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" /> Check In New Guest
-        </button>
+        <Button icon={Plus} onClick={() => setIsModalOpen(true)} className="self-start sm:self-auto">
+          Check In New Guest
+        </Button>
       </div>
 
       {error && (
@@ -248,13 +253,7 @@ export default function VisitorTracking() {
                       {vis.purpose}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        vis.status === 'Checked In'
-                          ? 'bg-indigo-50 dark:bg-indigo-955/35 text-indigo-650 border border-indigo-200/50'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-655'
-                      }`}>
-                        {vis.status}
-                      </span>
+                      <Badge tone={vis.status === 'Checked In' ? 'indigo' : 'neutral'}>{vis.status}</Badge>
                     </td>
                     <td className="px-6 py-4 text-right">
                       {vis.status === 'Checked In' ? (
@@ -277,20 +276,20 @@ export default function VisitorTracking() {
       </div>
 
       {/* Modal check-in form */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-55 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-extrabold text-base">Check In Visitor</h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-405 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCheckInSubmit} className="space-y-4">
+      <Modal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        title="Check In Visitor"
+        icon={DoorOpen}
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setIsModalOpen(false)} disabled={loading}>Cancel</Button>
+            <Button type="submit" form="visitor-checkin-form" loading={loading}>Confirm Check In</Button>
+          </>
+        }
+      >
+            <form id="visitor-checkin-form" onSubmit={handleCheckInSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                   Host Resident Student *
@@ -348,25 +347,8 @@ export default function VisitorTracking() {
                 />
               </div>
 
-              <div className="pt-2 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="w-full py-2 border border-slate-350 dark:border-slate-800 text-slate-655 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-900 transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="w-full py-2 bg-indigo-650 hover:bg-indigo-755 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/10 cursor-pointer"
-                >
-                  Confirm Check In
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }

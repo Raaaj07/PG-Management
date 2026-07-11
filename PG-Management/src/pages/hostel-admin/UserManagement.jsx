@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import client from '../../api/client';
 import { 
   Search, Plus, Trash2, Edit2, Key, ToggleLeft, ToggleRight, 
-  X, Check, Clipboard, AlertCircle, Users, ShieldAlert, ArrowRight, ShieldCheck 
+  X, Check, Clipboard, AlertCircle, Users, ShieldAlert, ArrowRight, ShieldCheck, UserPlus
 } from 'lucide-react';
+import { Modal } from '../../components/ui/Modal';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
 
 export const UserManagement = () => {
   const [activeTab, setActiveTab] = useState('student'); // 'student' or 'warden'
@@ -31,6 +36,8 @@ export const UserManagement = () => {
   });
 
   const [editUserData, setEditUserData] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -104,10 +111,12 @@ export const UserManagement = () => {
           emergencyContact: '',
           address: ''
         });
+        toast.success(`${activeTab === 'student' ? 'Resident' : 'Warden'} onboarded successfully`);
       }
     } catch (err) {
       console.error('Failed to create user:', err);
       setError(err.response?.data?.error || 'Failed to create user account.');
+      toast.error(err.response?.data?.error || 'Failed to create user account.');
     } finally {
       setLoading(false);
     }
@@ -126,10 +135,12 @@ export const UserManagement = () => {
         setUsers(updatedUsers);
         setShowEditModal(false);
         setEditUserData(null);
+        toast.success('Profile changes saved');
       }
     } catch (err) {
       console.error('Failed to update user:', err);
       setError(err.response?.data?.error || 'Failed to save profile changes.');
+      toast.error(err.response?.data?.error || 'Failed to save profile changes.');
     } finally {
       setLoading(false);
     }
@@ -141,10 +152,12 @@ export const UserManagement = () => {
       const response = await client.post(`/users/${userId}/reset-password`);
       if (response.data.success) {
         setActiveTempPassword(response.data.tempPassword);
+        toast.success('Temporary password generated');
       }
     } catch (err) {
       console.error('Failed to reset password:', err);
       setError('Failed to generate reset password.');
+      toast.error('Failed to generate reset password.');
     }
   };
 
@@ -156,24 +169,30 @@ export const UserManagement = () => {
       if (response.data.success) {
         const updatedUsers = users.map(u => u.id === userObj.id ? response.data.data : u);
         setUsers(updatedUsers);
+        toast.success(updatedStatus === 'Deactivated' ? 'Account suspended' : 'Account activated');
       }
     } catch (err) {
       console.error('Failed to change user status:', err);
       setError('Failed to update user status.');
+      toast.error('Failed to update user status.');
     }
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (window.confirm('Are you sure you want to permanently delete this user? This action is destructive and cannot be undone.')) {
-      setError(null);
-      try {
-        await client.delete(`/users/${userId}`);
-        const updated = users.filter(u => u.id !== userId);
-        setUsers(updated);
-      } catch (err) {
-        console.error('Failed to delete user:', err);
-        setError('Failed to remove user account.');
-      }
+  const handleDeleteUser = async () => {
+    if (!confirmDeleteId) return;
+    setError(null);
+    setDeleting(true);
+    try {
+      await client.delete(`/users/${confirmDeleteId}`);
+      setUsers(users.filter(u => u.id !== confirmDeleteId));
+      toast.success('User account removed');
+      setConfirmDeleteId(null);
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+      setError('Failed to remove user account.');
+      toast.error('Failed to remove user account.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -185,12 +204,9 @@ export const UserManagement = () => {
           <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Unified Identity Directory</h1>
           <p className="text-xs text-slate-500 font-medium dark:text-slate-400">Onboard, modify roles, reset passwords, or suspend access for tenants and staff.</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2.5 bg-indigo-650 dark:bg-indigo-600 hover:bg-indigo-755 text-white dark:text-white dark:hover:bg-indigo-700 rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg cursor-pointer transition-all"
-        >
-          <Plus className="w-4 h-4" /> Add {activeTab === 'student' ? 'Resident Tenant' : 'Warden'}
-        </button>
+        <Button icon={Plus} onClick={() => setShowAddModal(true)}>
+          Add {activeTab === 'student' ? 'Resident Tenant' : 'Warden'}
+        </Button>
       </div>
 
       {/* Error Alert */}
@@ -330,13 +346,9 @@ export const UserManagement = () => {
                       </>
                     )}
                     <td className="p-4">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                        userObj.status === 'Deactivated'
-                          ? 'bg-red-50 dark:bg-red-955/20 text-red-650 dark:text-red-400'
-                          : 'bg-emerald-50 dark:bg-emerald-955/25 text-emerald-650 dark:text-emerald-450'
-                      }`}>
+                      <Badge tone={userObj.status === 'Deactivated' ? 'danger' : 'success'}>
                         {userObj.status || 'Active'}
-                      </span>
+                      </Badge>
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-1.5">
@@ -369,7 +381,7 @@ export const UserManagement = () => {
                           <Key className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteUser(userObj.id)}
+                          onClick={() => setConfirmDeleteId(userObj.id)}
                           className="p-1.5 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors cursor-pointer"
                           title="Delete account permanently"
                         >
@@ -386,15 +398,21 @@ export const UserManagement = () => {
       </div>
 
       {/* Add User Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-850 p-6 sm:p-8 max-w-lg w-full shadow-2xl relative">
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-              Onboard New {activeTab === 'student' ? 'Resident' : 'Warden'}
-            </h3>
-            <p className="text-xs text-slate-500 mb-6">Create a new login profile. A temporary password will be shown upon confirmation.</p>
-
-            <form onSubmit={handleAddUserSubmit} className="space-y-4 text-xs">
+      <Modal
+        open={showAddModal}
+        onOpenChange={setShowAddModal}
+        title={`Onboard New ${activeTab === 'student' ? 'Resident' : 'Warden'}`}
+        description="Create a new login profile. A temporary password will be shown upon confirmation."
+        icon={UserPlus}
+        size="lg"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setShowAddModal(false)} disabled={loading}>Cancel</Button>
+            <Button type="submit" form="add-user-form" loading={loading}>Onboard User</Button>
+          </>
+        }
+      >
+            <form id="add-user-form" onSubmit={handleAddUserSubmit} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">Full Name</label>
@@ -492,36 +510,26 @@ export const UserManagement = () => {
                   />
                 </div>
               </div>
-
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 bg-slate-100 dark:bg-slate-900 text-slate-655 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-100 font-bold transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-4 py-2 bg-indigo-650 hover:bg-indigo-755 text-white rounded-xl font-bold transition-all shadow-md cursor-pointer"
-                >
-                  {loading ? 'Creating...' : 'Onboard User'}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Edit User Modal */}
-      {showEditModal && editUserData && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-955 rounded-3xl border border-slate-200 dark:border-slate-850 p-6 sm:p-8 max-w-lg w-full shadow-2xl relative">
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Modify Profile Credentials</h3>
-            <p className="text-xs text-slate-550 mb-6">Modify user contacts, emergency attributes, or suspended status.</p>
-
-            <form onSubmit={handleEditUserSubmit} className="space-y-4 text-xs">
+      <Modal
+        open={showEditModal && !!editUserData}
+        onOpenChange={(v) => { if (!v) { setShowEditModal(false); setEditUserData(null); } }}
+        title="Modify Profile Credentials"
+        description="Modify user contacts, emergency attributes, or suspended status."
+        icon={Edit2}
+        size="lg"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => { setShowEditModal(false); setEditUserData(null); }} disabled={loading}>Cancel</Button>
+            <Button type="submit" form="edit-user-form" loading={loading}>Save Profile Changes</Button>
+          </>
+        }
+      >
+        {editUserData && (
+            <form id="edit-user-form" onSubmit={handleEditUserSubmit} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">Full Name</label>
@@ -612,27 +620,19 @@ export const UserManagement = () => {
                   />
                 </div>
               </div>
-
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => { setShowEditModal(false); setEditUserData(null); }}
-                  className="px-4 py-2 bg-slate-100 dark:bg-slate-900 text-slate-655 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-100 font-bold transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-4 py-2 bg-indigo-650 hover:bg-indigo-755 text-white rounded-xl font-bold transition-all shadow-md cursor-pointer"
-                >
-                  {loading ? 'Saving...' : 'Save Profile Changes'}
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        onOpenChange={(v) => !v && setConfirmDeleteId(null)}
+        title="Delete this user account?"
+        description="This action is destructive and cannot be undone."
+        confirmLabel="Delete Account"
+        loading={deleting}
+        onConfirm={handleDeleteUser}
+      />
     </div>
   );
 };

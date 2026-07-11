@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { Home, Users, Clock, AlertTriangle, ShieldCheck, Mail, Phone, Layers, Bed, AlertCircle } from 'lucide-react';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { Badge } from '../../components/ui/Badge';
 
 const ROOM_IMAGES = {
   '101': 'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=600&auto=format&fit=crop&q=60',
@@ -77,13 +80,10 @@ export default function RoomDetails() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">Room Information</h1>
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Check roommate logs, property curfew parameters, and details for room {room?.roomNo || 'N/A'}.
-        </p>
-      </div>
+      <PageHeader
+        title="Room Information"
+        subtitle={`Check roommate logs, property curfew parameters, and details for room ${room?.roomNo || 'N/A'}.`}
+      />
 
       {error && (
         <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
@@ -103,9 +103,13 @@ export default function RoomDetails() {
               const image = getRoomImage(r.roomNo);
 
               return (
-                <div 
+                <motion.div 
                   key={r.id} 
-                  className={`bg-white dark:bg-slate-955 rounded-2xl border overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col group ${
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  whileHover={{ y: -3 }}
+                  className={`bg-white dark:bg-slate-955 rounded-2xl border overflow-hidden shadow-xs hover:shadow-lg transition-all flex flex-col group ${
                     isMyRoom 
                       ? 'border-indigo-500/80 ring-2 ring-indigo-500/10' 
                       : 'border-slate-200 dark:border-slate-850'
@@ -212,7 +216,7 @@ export default function RoomDetails() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -286,13 +290,9 @@ export default function RoomDetails() {
                       </div>
                       <div className="text-right">
                         <div className="text-xs font-extrabold text-slate-900 dark:text-white">₹{variety.rent}/mo</div>
-                        <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold mt-1 ${
-                          variety.vacantBeds > 0 
-                            ? 'bg-emerald-500/10 text-emerald-600' 
-                            : 'bg-red-500/10 text-red-500'
-                        }`}>
+                        <Badge tone={variety.vacantBeds > 0 ? 'success' : 'danger'} dot={false} className="mt-1">
                           {variety.vacantBeds > 0 ? `${variety.vacantBeds} beds vacant` : 'No Vacancy'}
-                        </span>
+                        </Badge>
                       </div>
                     </div>
                   ))}

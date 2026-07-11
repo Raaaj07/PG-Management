@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import client from '../../api/client';
 import { Pin, Calendar, User, AlertCircle } from 'lucide-react';
+import { EmptyState } from '../../components/ui/PageHeader';
+import { SkeletonCard } from '../../components/ui/Skeleton';
 
 export default function TenantNoticeBoard() {
   const [notices, setNotices] = useState([]);
@@ -45,15 +48,21 @@ export default function TenantNoticeBoard() {
 
       {/* Grid of notices */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {notices.length === 0 ? (
-          <div className="col-span-full bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 p-12 rounded-2xl text-center text-slate-450 dark:text-slate-500">
-            No notices are currently posted.
+        {loading ? (
+          Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
+        ) : notices.length === 0 ? (
+          <div className="col-span-full bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-2xl">
+            <EmptyState icon={Pin} title="No notices are currently posted" description="Check back later for updates from your Warden or PG Admin." />
           </div>
         ) : (
-          notices.map(notice => (
-            <div
+          notices.map((notice, idx) => (
+            <motion.div
               key={notice.id}
-              className="bg-white dark:bg-slate-955 border border-slate-250/60 dark:border-slate-850 p-5 rounded-2xl flex flex-col justify-between shadow-xs relative hover:shadow-md transition-all group animate-fade-in"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: (idx % 6) * 0.04 }}
+              whileHover={{ y: -3 }}
+              className="bg-white dark:bg-slate-955 border border-slate-250/60 dark:border-slate-850 p-5 rounded-2xl flex flex-col justify-between shadow-xs relative hover:shadow-lg transition-all group"
             >
               <div className="absolute top-4 right-4 text-indigo-500 dark:text-indigo-400">
                 <Pin className="w-4 h-4 fill-indigo-500/10 rotate-45" />
@@ -89,7 +98,7 @@ export default function TenantNoticeBoard() {
                   Date: {notice.date}
                 </span>
               </div>
-            </div>
+            </motion.div>
           ))
         )}
       </div>

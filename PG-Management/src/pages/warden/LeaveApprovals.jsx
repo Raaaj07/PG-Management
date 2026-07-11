@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { CalendarRange, Search, Check, X, Calendar, User, Clock, AlertCircle } from 'lucide-react';
+import { Badge } from '../../components/ui/Badge';
+import { EmptyState } from '../../components/ui/PageHeader';
 
 export default function LeaveApprovals() {
   const { user } = useAuth();
@@ -58,9 +62,11 @@ export default function LeaveApprovals() {
         return l;
       });
       setLeaves(updated);
+      toast.success(decision === 'Approved' ? 'Outpass approved' : 'Outpass rejected');
     } catch (err) {
       console.error('Failed to save leave decision:', err);
       setError('Failed to record outpass approval decision.');
+      toast.error('Failed to record outpass approval decision.');
     }
   };
 
@@ -99,10 +105,16 @@ export default function LeaveApprovals() {
           { label: 'Approved Active Outpasses', value: leaves.filter(l => l.status === 'Approved').length, color: 'text-emerald-555 dark:text-emerald-450 bg-emerald-550/5 border-emerald-200/50 dark:border-emerald-955/20' },
           { label: 'Rejected Applications', value: leaves.filter(l => l.status === 'Rejected').length, color: 'text-red-500 bg-red-500/5 border-red-200/50 dark:border-red-955/20' }
         ].map((item, i) => (
-          <div key={i} className={`p-4 border rounded-2xl flex flex-col justify-center ${item.color}`}>
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: i * 0.05 }}
+            className={`p-4 border rounded-2xl flex flex-col justify-center ${item.color}`}
+          >
             <span className="text-[10px] font-bold uppercase tracking-wider opacity-85">{item.label}</span>
             <span className="text-2xl font-extrabold mt-1">{item.value}</span>
-          </div>
+          </motion.div>
         ))}
       </div>
 
@@ -143,9 +155,7 @@ export default function LeaveApprovals() {
         {/* Leaves list */}
         <div className="divide-y divide-slate-100 dark:divide-slate-855 text-xs">
           {filteredLeaves.length === 0 ? (
-            <div className="p-12 text-center text-slate-450 dark:text-slate-550">
-              No leave outpass tickets match the criteria.
-            </div>
+            <EmptyState icon={CalendarRange} title="No matching outpass tickets" description="Try adjusting your search or status filter." />
           ) : (
             filteredLeaves.map(leave => (
               <div key={leave.id} className="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-slate-50/30 dark:hover:bg-slate-900/10 transition-colors">
@@ -188,13 +198,7 @@ export default function LeaveApprovals() {
                       </button>
                     </div>
                   ) : (
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                      leave.status === 'Approved'
-                        ? 'bg-emerald-50 dark:bg-emerald-955/35 text-emerald-650 dark:text-emerald-400 border border-emerald-250/50'
-                        : 'bg-red-50 dark:bg-red-955/35 text-red-650 dark:text-red-400 border border-red-250/50'
-                    }`}>
-                      {leave.status}
-                    </span>
+                    <Badge status={leave.status} />
                   )}
                 </div>
               </div>

@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { Pin, Plus, Calendar, User, Eye, Trash2, X, AlertCircle } from 'lucide-react';
+import { Modal } from '../../components/ui/Modal';
+import { Button } from '../../components/ui/Button';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { EmptyState } from '../../components/ui/PageHeader';
 
 export default function NoticeBoard() {
   const { user } = useAuth();
@@ -14,6 +20,8 @@ export default function NoticeBoard() {
     content: '',
     target: 'All'
   });
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchNotices = async () => {
     setLoading(true);
@@ -53,23 +61,31 @@ export default function NoticeBoard() {
       setNotices([newEntry, ...notices]);
       setNewNotice({ title: '', content: '', target: 'All' });
       setIsModalOpen(false);
+      toast.success('Notice published');
     } catch (err) {
       console.error('Failed to create notice:', err);
       setError('Failed to publish announcement.');
+      toast.error('Failed to publish announcement.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteNotice = async (id) => {
+  const handleDeleteNotice = async () => {
+    if (!confirmDeleteId) return;
     setError(null);
+    setDeleting(true);
     try {
-      await client.delete(`/notices/${id}`);
-      const updated = notices.filter(n => n.id !== id);
-      setNotices(updated);
+      await client.delete(`/notices/${confirmDeleteId}`);
+      setNotices(notices.filter(n => n.id !== confirmDeleteId));
+      toast.success('Notice removed');
+      setConfirmDeleteId(null);
     } catch (err) {
       console.error('Failed to delete notice:', err);
       setError('Failed to delete announcement.');
+      toast.error('Failed to delete announcement.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -83,12 +99,9 @@ export default function NoticeBoard() {
             Publish notices, guidelines, and announcements to residents and hostel staff.
           </p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-650 text-white rounded-xl text-xs font-bold hover:bg-indigo-750 transition-all shadow-md shadow-indigo-600/10 cursor-pointer self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" /> Create Notice
-        </button>
+        <Button icon={Plus} onClick={() => setIsModalOpen(true)} className="self-start sm:self-auto">
+          Create Notice
+        </Button>
       </div>
 
       {error && (
@@ -101,14 +114,18 @@ export default function NoticeBoard() {
       {/* Grid of Notices */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {notices.length === 0 ? (
-          <div className="col-span-full bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 p-12 rounded-2xl text-center text-slate-450 dark:text-slate-500">
-            No notices published yet. Click "Create Notice" to add one.
+          <div className="col-span-full bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-2xl">
+            <EmptyState icon={Pin} title="No notices published yet" description='Click "Create Notice" to publish your first announcement.' />
           </div>
         ) : (
-          notices.map((notice) => (
-            <div
+          notices.map((notice, idx) => (
+            <motion.div
               key={notice.id}
-              className="bg-white dark:bg-slate-955 border border-slate-250/60 dark:border-slate-850 rounded-2xl p-5 shadow-xs relative flex flex-col justify-between hover:shadow-md transition-all group"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: (idx % 6) * 0.04 }}
+              whileHover={{ y: -3 }}
+              className="bg-white dark:bg-slate-955 border border-slate-250/60 dark:border-slate-850 rounded-2xl p-5 shadow-xs relative flex flex-col justify-between hover:shadow-lg transition-all group"
             >
               {/* Pin Icon */}
               <div className="absolute top-4 right-4 text-indigo-555 dark:text-indigo-400">
@@ -153,7 +170,7 @@ export default function NoticeBoard() {
 
                 {notice.createdBy === 'Hostel Admin' && (
                   <button
-                    onClick={() => handleDeleteNotice(notice.id)}
+                    onClick={() => setConfirmDeleteId(notice.id)}
                     className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-955/20 rounded-lg transition-colors cursor-pointer"
                     title="Delete Notice"
                   >
@@ -161,26 +178,26 @@ export default function NoticeBoard() {
                   </button>
                 )}
               </div>
-            </div>
+            </motion.div>
           ))
         )}
       </div>
 
       {/* Modal for New Notice */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-55 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-extrabold text-base">Create Notice Board Announcement</h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-405 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateNotice} className="space-y-4">
+      <Modal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        title="Create Notice Board Announcement"
+        icon={Pin}
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setIsModalOpen(false)} disabled={loading}>Cancel</Button>
+            <Button type="submit" form="create-notice-form" loading={loading}>Publish Notice</Button>
+          </>
+        }
+      >
+            <form id="create-notice-form" onSubmit={handleCreateNotice} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                   Notice Title *
@@ -223,26 +240,18 @@ export default function NoticeBoard() {
                   className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none text-slate-850 dark:text-slate-100"
                 />
               </div>
-
-              <div className="pt-2 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="w-full py-2 border border-slate-350 dark:border-slate-800 text-slate-650 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-900 transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="w-full py-2 bg-indigo-650 hover:bg-indigo-750 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/10 cursor-pointer"
-                >
-                  Publish Notice
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
+
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        onOpenChange={(v) => !v && setConfirmDeleteId(null)}
+        title="Delete this notice?"
+        description="This announcement will be removed from the board for everyone."
+        confirmLabel="Delete Notice"
+        loading={deleting}
+        onConfirm={handleDeleteNotice}
+      />
     </div>
   );
 }

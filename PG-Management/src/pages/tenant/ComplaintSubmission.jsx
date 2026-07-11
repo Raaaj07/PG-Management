@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { ShieldAlert, Plus, Search, CheckCircle, Clock, AlertTriangle, X, AlertCircle } from 'lucide-react';
+import { Modal } from '../../components/ui/Modal';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { EmptyState } from '../../components/ui/PageHeader';
 
 export default function ComplaintSubmission() {
   const { user } = useAuth();
@@ -65,10 +70,12 @@ export default function ComplaintSubmission() {
       setNewComplaint({ title: '', category: 'Internet', description: '', priority: 'Medium' });
       setIsModalOpen(false);
       setSuccessMsg('Complaint registered successfully! Warden will review it shortly.');
+      toast.success('Ticket filed — Warden will review it shortly');
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
       console.error('Failed to submit complaint:', err);
       setError('Failed to submit your complaint.');
+      toast.error('Failed to submit your complaint.');
     } finally {
       setLoading(false);
     }
@@ -84,12 +91,9 @@ export default function ComplaintSubmission() {
             Submit repair requests or report facility issues directly to the hostel warden.
           </p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-650 text-white rounded-xl text-xs font-bold hover:bg-indigo-755 transition-all shadow-md shadow-indigo-600/10 cursor-pointer self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" /> File New Ticket
-        </button>
+        <Button icon={Plus} onClick={() => setIsModalOpen(true)} className="self-start sm:self-auto">
+          File New Ticket
+        </Button>
       </div>
 
       {/* Success banner */}
@@ -118,23 +122,13 @@ export default function ComplaintSubmission() {
 
         <div className="divide-y divide-slate-100 dark:divide-slate-855 text-xs">
           {complaints.length === 0 ? (
-            <div className="p-12 text-center text-slate-450 dark:text-slate-550">
-              No complaint tickets submitted. All systems green!
-            </div>
+            <EmptyState icon={ShieldAlert} title="No complaint tickets submitted" description="All systems green — file a ticket if something needs attention." />
           ) : (
             complaints.map(comp => (
               <div key={comp.id} className="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-slate-50/40 dark:hover:bg-slate-900/10 transition-colors">
                 <div className="space-y-2 max-w-2xl">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${
-                      comp.priority === 'High'
-                        ? 'bg-red-500/15 text-red-500'
-                        : comp.priority === 'Medium'
-                        ? 'bg-indigo-55/15 text-indigo-650'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                    }`}>
-                      {comp.priority} Priority
-                    </span>
+                    <Badge tone={comp.priority === 'High' ? 'danger' : comp.priority === 'Medium' ? 'indigo' : 'neutral'} dot={false}>{comp.priority} Priority</Badge>
                     <span className="text-[10px] text-slate-450 dark:text-slate-500 font-mono uppercase">{comp.id}</span>
                   </div>
 
@@ -159,15 +153,7 @@ export default function ComplaintSubmission() {
                 </div>
 
                 <div className="shrink-0 self-end md:self-auto">
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                    comp.status === 'Resolved'
-                      ? 'bg-emerald-50 dark:bg-emerald-955/35 text-emerald-650 dark:text-emerald-450 border border-emerald-250/50'
-                      : comp.status === 'In Progress'
-                      ? 'bg-indigo-50 dark:bg-indigo-955/35 text-indigo-650 border border-indigo-250/50'
-                      : 'bg-red-50 dark:bg-red-955/35 text-red-650 border border-red-250/50'
-                  }`}>
-                    {comp.status}
-                  </span>
+                  <Badge status={comp.status} />
                 </div>
               </div>
             ))
@@ -176,20 +162,20 @@ export default function ComplaintSubmission() {
       </div>
 
       {/* Submission Modal Sheet */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-55 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-extrabold text-base">File Repair / Maintenance Ticket</h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-405 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+      <Modal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        title="File Repair / Maintenance Ticket"
+        icon={ShieldAlert}
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setIsModalOpen(false)} disabled={loading}>Cancel</Button>
+            <Button type="submit" form="complaint-form" loading={loading}>Submit Ticket</Button>
+          </>
+        }
+      >
+            <form id="complaint-form" onSubmit={handleSubmit} className="space-y-4 text-xs">
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                   Category *
@@ -262,25 +248,8 @@ export default function ComplaintSubmission() {
                 />
               </div>
 
-              <div className="pt-2 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="w-full py-2 border border-slate-350 dark:border-slate-800 text-slate-655 dark:text-slate-305 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-900 transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="w-full py-2 bg-indigo-650 hover:bg-indigo-755 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/10 cursor-pointer"
-                >
-                  Submit Ticket
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }

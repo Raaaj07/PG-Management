@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { ShieldAlert, ArrowLeft, Home } from 'lucide-react';
 
@@ -20,10 +21,20 @@ export const AccessDeniedPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 flex items-center justify-center p-6 transition-colors">
-      <div className="max-w-md w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 p-8 sm:p-10 rounded-3xl shadow-xl text-center space-y-6">
-        <div className="inline-flex p-4 bg-red-500/10 text-red-500 rounded-2xl">
+      <motion.div
+        initial={{ opacity: 0, y: 12, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+        className="max-w-md w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-850 p-8 sm:p-10 rounded-3xl shadow-xl text-center space-y-6"
+      >
+        <motion.div
+          initial={{ scale: 0.6, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.1, type: 'spring', stiffness: 260, damping: 18 }}
+          className="inline-flex p-4 bg-red-500/10 text-red-500 rounded-2xl"
+        >
           <ShieldAlert className="w-12 h-12 stroke-1.5" />
-        </div>
+        </motion.div>
         
         <div className="space-y-2">
           <h1 className="text-2xl font-extrabold tracking-tight">Access Denied</h1>
@@ -47,7 +58,7 @@ export const AccessDeniedPage = () => {
             <Home className="w-4 h-4" /> Dashboard
           </Link>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };

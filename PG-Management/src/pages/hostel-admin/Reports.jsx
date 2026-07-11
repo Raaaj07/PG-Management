@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { FileText, Download, Filter, Home, Wallet, ShieldAlert, BarChart3, AlertCircle } from 'lucide-react';
+import { Badge } from '../../components/ui/Badge';
 
 export default function Reports() {
   const { user } = useAuth();
@@ -157,6 +160,7 @@ export default function Reports() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    toast.success('Report exported as CSV');
   };
 
   return (
@@ -232,10 +236,17 @@ export default function Reports() {
           { title: summaryStats.title3, value: summaryStats.val3 },
           { title: summaryStats.title4, value: summaryStats.val4 }
         ].map((stat, i) => (
-          <div key={i} className="bg-white dark:bg-slate-955 border border-slate-250/60 dark:border-slate-850 p-5 rounded-2xl flex flex-col justify-center">
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: i * 0.05 }}
+            whileHover={{ y: -3 }}
+            className="bg-white dark:bg-slate-955 border border-slate-250/60 dark:border-slate-850 p-5 rounded-2xl flex flex-col justify-center shadow-sm hover:shadow-lg transition-shadow"
+          >
             <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider">{stat.title}</span>
             <span className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">{stat.value}</span>
-          </div>
+          </motion.div>
         ))}
       </div>
 
@@ -272,15 +283,7 @@ export default function Reports() {
                       {row.occupants}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        row.status === 'Fully Booked'
-                          ? 'bg-emerald-50 dark:bg-emerald-955/35 text-emerald-650 dark:text-emerald-400 border border-emerald-250/50'
-                          : row.status === 'Empty'
-                          ? 'bg-red-50 dark:bg-red-955/35 text-red-650 dark:text-red-400 border border-red-250/50'
-                          : 'bg-amber-50 dark:bg-amber-955/35 text-amber-650 dark:text-amber-400 border border-amber-250/50'
-                      }`}>
-                        {row.status}
-                      </span>
+                      <Badge tone={row.status === 'Fully Booked' ? 'success' : row.status === 'Empty' ? 'danger' : 'warning'}>{row.status}</Badge>
                     </td>
                   </tr>
                 ))}
@@ -309,15 +312,7 @@ export default function Reports() {
                     <td className="px-6 py-4 font-semibold">₹{row.amount}</td>
                     <td className="px-6 py-4 text-slate-500">{row.date || '—'}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        row.status === 'Paid'
-                          ? 'bg-emerald-50 dark:bg-emerald-955/35 text-emerald-650 dark:text-emerald-400 border border-emerald-250/50'
-                          : row.status === 'Unpaid'
-                          ? 'bg-red-50 dark:bg-red-955/35 text-red-650 dark:text-red-400 border border-red-250/50'
-                          : 'bg-indigo-50 dark:bg-indigo-955/35 text-indigo-650 dark:text-indigo-400 border border-indigo-250/50'
-                      }`}>
-                        {row.status}
-                      </span>
+                      <Badge status={row.status} />
                     </td>
                   </tr>
                 ))}
@@ -350,27 +345,11 @@ export default function Reports() {
                       {row.title}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        row.priority === 'High'
-                          ? 'bg-red-500/10 text-red-500'
-                          : row.priority === 'Medium'
-                          ? 'bg-indigo-500/10 text-indigo-650 dark:text-indigo-400'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                      }`}>
-                        {row.priority}
-                      </span>
+                      <Badge tone={row.priority === 'High' ? 'danger' : row.priority === 'Medium' ? 'indigo' : 'neutral'} dot={false}>{row.priority}</Badge>
                     </td>
                     <td className="px-6 py-4 text-slate-500">{row.date}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        row.status === 'Resolved'
-                          ? 'bg-emerald-50 dark:bg-emerald-955/35 text-emerald-650 dark:text-emerald-400 border border-emerald-250/50'
-                          : row.status === 'In Progress'
-                          ? 'bg-indigo-50 dark:bg-indigo-955/35 text-indigo-650 dark:text-indigo-400 border border-indigo-250/50'
-                          : 'bg-red-50 dark:bg-red-955/35 text-red-650 dark:text-red-400 border border-red-250/50'
-                      }`}>
-                        {row.status}
-                      </span>
+                      <Badge status={row.status} />
                     </td>
                   </tr>
                 ))}

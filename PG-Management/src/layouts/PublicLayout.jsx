@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import client from '../api/client';
+import { PageTransition } from '../components/ui/PageTransition';
 import { Menu, X, Sun, Moon, Home, Users, Mail, Compass } from 'lucide-react';
 
 export const PublicLayout = () => {
@@ -151,8 +153,16 @@ export const PublicLayout = () => {
         </div>
 
         {/* Mobile Menu Dropdown */}
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 py-4 px-4 space-y-2 transition-all">
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 overflow-hidden"
+            >
+            <div className="py-4 px-4 space-y-2">
             {navLinks.map((link) => {
               const Icon = link.icon;
               return (
@@ -211,13 +221,17 @@ export const PublicLayout = () => {
                 </>
               )}
             </div>
-          </div>
-        )}
+            </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
       {/* Main Content */}
       <main className="flex-grow">
-        <Outlet />
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
       </main>
 
       {/* Footer */}

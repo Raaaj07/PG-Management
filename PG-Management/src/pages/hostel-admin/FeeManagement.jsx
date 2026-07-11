@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import client from '../../api/client';
-import { Search, Filter, Plus, Bell, Check, Trash2, FileSpreadsheet, AlertCircle } from 'lucide-react';
+import { Search, Filter, Plus, Bell, Check, Trash2, AlertCircle, Receipt } from 'lucide-react';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { Modal } from '../../components/ui/Modal';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { EmptyState } from '../../components/ui/PageHeader';
+import { SkeletonTableRow } from '../../components/ui/Skeleton';
 
 export const FeeManagement = () => {
   const [fees, setFees] = useState([]);
@@ -10,7 +18,10 @@ export const FeeManagement = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newInvoice, setNewInvoice] = useState({ studentId: '', amount: 12000, month: 'July 2026' });
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -61,14 +72,16 @@ export const FeeManagement = () => {
         return f;
       });
       setFees(updated);
+      toast.success('Payment marked as paid');
     } catch (err) {
       console.error('Failed to approve payment:', err);
       setError('Failed to update payment status to Paid.');
+      toast.error('Failed to update payment status.');
     }
   };
 
   const sendReminder = (studentName) => {
-    alert(`Fee payment reminder alert dispatched via SMS & Email to ${studentName}.`);
+    toast.success(`Reminder sent to ${studentName}`, { icon: '📩' });
   };
 
   const handleCreateInvoice = async (e) => {
@@ -88,47 +101,50 @@ export const FeeManagement = () => {
       invoiceNo: `INV-2026-00${fees.length + 1}`
     };
 
-    setLoading(true);
+    setSubmitting(true);
     try {
       await client.post('/fees', added);
       setFees([...fees, added]);
       setShowAddModal(false);
+      toast.success('Invoice generated successfully');
     } catch (err) {
       console.error('Failed to create invoice:', err);
       setError('Failed to create fee invoice.');
+      toast.error('Failed to create fee invoice.');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  const deleteInvoice = async (feeId) => {
-    if (window.confirm('Are you sure you want to delete this invoice record?')) {
-      setError(null);
-      try {
-        await client.delete(`/fees/${feeId}`);
-        const updated = fees.filter(f => f.id !== feeId);
-        setFees(updated);
-      } catch (err) {
-        console.error('Failed to delete invoice:', err);
-        setError('Failed to delete fee invoice.');
-      }
+  const deleteInvoice = async () => {
+    if (!confirmDeleteId) return;
+    setError(null);
+    setDeleting(true);
+    try {
+      await client.delete(`/fees/${confirmDeleteId}`);
+      setFees(fees.filter(f => f.id !== confirmDeleteId));
+      toast.success('Invoice deleted');
+      setConfirmDeleteId(null);
+    } catch (err) {
+      console.error('Failed to delete invoice:', err);
+      setError('Failed to delete fee invoice.');
+      toast.error('Failed to delete fee invoice.');
+    } finally {
+      setDeleting(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Fee & Invoicing Management</h1>
-          <p className="text-xs text-slate-500 font-medium">Record tenant rent payments, generate invoices, or send reminder alerts.</p>
-        </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2.5 bg-indigo-650 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg cursor-pointer"
-        >
-          <Plus className="w-4 h-4" /> Create Invoice
-        </button>
-      </div>
+      <PageHeader
+        title="Fee & Invoicing Management"
+        subtitle="Record tenant rent payments, generate invoices, or send reminder alerts."
+        actions={
+          <Button icon={Plus} onClick={() => setShowAddModal(true)}>
+            Create Invoice
+          </Button>
+        }
+      />
 
       {error && (
         <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
@@ -180,117 +196,122 @@ export const FeeManagement = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
-              {filteredFees.map((f) => (
-                <tr key={f.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/10 transition-colors">
-                  <td className="p-4 font-mono font-bold text-slate-500">{f.invoiceNo}</td>
-                  <td className="p-4 font-bold text-slate-900 dark:text-white">{f.studentName}</td>
-                  <td className="p-4 font-semibold">{f.month}</td>
-                  <td className="p-4 font-bold text-indigo-650 dark:text-indigo-400">${f.amount}</td>
-                  <td className="p-4">
-                    <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${
-                      f.status === 'Paid' ? 'bg-emerald-500/10 text-emerald-500' :
-                      f.status === 'Pending Review' ? 'bg-amber-500/10 text-amber-550' : 'bg-red-500/10 text-red-500'
-                    }`}>
-                      {f.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right flex justify-end gap-1.5 items-center">
-                    {f.status === 'Pending Review' && (
-                      <button
-                        onClick={() => approvePayment(f.id)}
-                        title="Approve Payment"
-                        className="p-1.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer"
-                      >
-                        <Check className="w-4 h-4" />
-                      </button>
-                    )}
-                    {f.status !== 'Paid' && (
-                      <button
-                        onClick={() => sendReminder(f.studentName)}
-                        title="Send Reminder SMS/Mail"
-                        className="p-1.5 bg-amber-55/10 text-amber-550 rounded-lg hover:bg-amber-100/30 transition-colors cursor-pointer"
-                      >
-                        <Bell className="w-4 h-4" />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => deleteInvoice(f.id)}
-                      title="Delete Invoice"
-                      className="p-1.5 bg-red-50 dark:bg-red-955/20 text-red-650 rounded-lg hover:bg-red-100 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => <SkeletonTableRow key={i} cols={6} />)
+              ) : filteredFees.length === 0 ? (
+                <tr>
+                  <td colSpan={6}>
+                    <EmptyState icon={Receipt} title="No invoices found" description="Try adjusting your search or filters, or create a new invoice." />
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredFees.map((f) => (
+                  <tr key={f.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/10 transition-colors">
+                    <td className="p-4 font-mono font-bold text-slate-500">{f.invoiceNo}</td>
+                    <td className="p-4 font-bold text-slate-900 dark:text-white">{f.studentName}</td>
+                    <td className="p-4 font-semibold">{f.month}</td>
+                    <td className="p-4 font-bold text-indigo-650 dark:text-indigo-400">${f.amount}</td>
+                    <td className="p-4">
+                      <Badge status={f.status} />
+                    </td>
+                    <td className="p-4 text-right flex justify-end gap-1.5 items-center">
+                      {f.status === 'Pending Review' && (
+                        <button
+                          onClick={() => approvePayment(f.id)}
+                          title="Approve Payment"
+                          className="p-1.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors cursor-pointer"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                      )}
+                      {f.status !== 'Paid' && (
+                        <button
+                          onClick={() => sendReminder(f.studentName)}
+                          title="Send Reminder SMS/Mail"
+                          className="p-1.5 bg-amber-55/10 text-amber-550 rounded-lg hover:bg-amber-100/30 transition-colors cursor-pointer"
+                        >
+                          <Bell className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setConfirmDeleteId(f.id)}
+                        title="Delete Invoice"
+                        className="p-1.5 bg-red-50 dark:bg-red-955/20 text-red-650 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-950 rounded-3xl border border-slate-200 dark:border-slate-850 p-6 sm:p-8 max-w-sm w-full shadow-2xl relative">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">Generate Monthly Invoice</h3>
-            <p className="text-xs text-slate-550 mb-6 font-semibold">Select a student and monthly billing range to trigger an invoice.</p>
-
-            <form onSubmit={handleCreateInvoice} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-550 uppercase mb-1.5">Select Resident Student</label>
-                <select
-                  value={newInvoice.studentId}
-                  onChange={(e) => setNewInvoice({ ...newInvoice, studentId: e.target.value })}
-                  className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none text-slate-950 dark:text-white"
-                >
-                  {students.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name} (Room {s.roomNo})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-550 uppercase mb-1.5">Invoice Amount ($)</label>
-                  <input
-                    type="number"
-                    required
-                    value={newInvoice.amount}
-                    onChange={(e) => setNewInvoice({ ...newInvoice, amount: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none text-slate-955 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-550 uppercase mb-1.5">Billing Period</label>
-                  <input
-                    type="text"
-                    required
-                    value={newInvoice.month}
-                    onChange={(e) => setNewInvoice({ ...newInvoice, month: e.target.value })}
-                    placeholder="e.g. July 2026"
-                    className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none text-slate-955 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-850">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-655"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md"
-                >
-                  Generate Invoice
-                </button>
-              </div>
-            </form>
+      <Modal
+        open={showAddModal}
+        onOpenChange={setShowAddModal}
+        title="Generate Monthly Invoice"
+        description="Select a student and monthly billing range to trigger an invoice."
+        icon={Receipt}
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setShowAddModal(false)} disabled={submitting}>Cancel</Button>
+            <Button type="submit" form="create-invoice-form" loading={submitting}>Generate Invoice</Button>
+          </>
+        }
+      >
+        <form id="create-invoice-form" onSubmit={handleCreateInvoice} className="space-y-4">
+          <div>
+            <label className="block text-[10px] font-bold text-slate-550 uppercase mb-1.5">Select Resident Student</label>
+            <select
+              value={newInvoice.studentId}
+              onChange={(e) => setNewInvoice({ ...newInvoice, studentId: e.target.value })}
+              className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-950 dark:text-white"
+            >
+              {students.map((s) => (
+                <option key={s.id} value={s.id}>{s.name} (Room {s.roomNo})</option>
+              ))}
+            </select>
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-550 uppercase mb-1.5">Invoice Amount ($)</label>
+              <input
+                type="number"
+                required
+                value={newInvoice.amount}
+                onChange={(e) => setNewInvoice({ ...newInvoice, amount: e.target.value })}
+                className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-955 dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-550 uppercase mb-1.5">Billing Period</label>
+              <input
+                type="text"
+                required
+                value={newInvoice.month}
+                onChange={(e) => setNewInvoice({ ...newInvoice, month: e.target.value })}
+                placeholder="e.g. July 2026"
+                className="w-full px-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-slate-955 dark:text-white"
+              />
+            </div>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        onOpenChange={(v) => !v && setConfirmDeleteId(null)}
+        title="Delete this invoice?"
+        description="This invoice record will be permanently removed."
+        confirmLabel="Delete Invoice"
+        loading={deleting}
+        onConfirm={deleteInvoice}
+      />
     </div>
   );
 };

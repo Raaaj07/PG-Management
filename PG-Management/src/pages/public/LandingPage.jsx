@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import client from '../../api/client';
 import { 
   Building, ShieldCheck, Zap, Users, ChevronRight, Star, 
@@ -90,23 +91,43 @@ export const LandingPage = () => {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative text-center">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-indigo-55/60 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-xs font-bold mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-indigo-55/60 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-xs font-bold mb-6"
+          >
             <MapPin className="w-3.5 h-3.5" />
             {pgInfo.address}
-          </div>
+          </motion.div>
           
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none text-slate-900 dark:text-white max-w-4xl mx-auto">
+          <motion.h1
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.05 }}
+            className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none text-slate-900 dark:text-white max-w-4xl mx-auto"
+          >
             Experience Premium Co-Living at{' '}
             <span className="bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent">
               {pgInfo.name}
             </span>
-          </h1>
+          </motion.h1>
           
-          <p className="mt-6 text-base sm:text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="mt-6 text-base sm:text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed"
+          >
             Welcome to the city's finest co-living facility. We offer fully furnished AC rooms, high-speed internet, nutritious home-style meals, and 24/7 security tailored for students and working professionals.
-          </p>
+          </motion.p>
 
-          <div className="mt-10 flex flex-col sm:flex-row justify-center items-center gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="mt-10 flex flex-col sm:flex-row justify-center items-center gap-4"
+          >
             <Link
               to="/login"
               className="w-full sm:w-auto px-8 py-3.5 text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-600/20 hover:shadow-indigo-700/30 transition-all flex items-center justify-center gap-2"
@@ -120,7 +141,7 @@ export const LandingPage = () => {
             >
               Apply for Admission
             </Link>
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -159,9 +180,13 @@ export const LandingPage = () => {
           {amenities.map((h, idx) => {
             const Icon = h.icon;
             return (
-              <div
+              <motion.div
                 key={idx}
-                className="bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 p-8 rounded-2xl flex flex-col gap-4 shadow-sm hover:shadow-md hover:border-slate-350 dark:hover:border-slate-800 transition-all group"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.4, delay: (idx % 3) * 0.08 }}
+                className="bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 p-8 rounded-2xl flex flex-col gap-4 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-slate-350 dark:hover:border-slate-800 transition-all group"
               >
                 <div className={`p-3.5 rounded-xl shrink-0 w-fit ${h.color}`}>
                   <Icon className="w-6 h-6" />
@@ -174,7 +199,7 @@ export const LandingPage = () => {
                     {h.desc}
                   </p>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>

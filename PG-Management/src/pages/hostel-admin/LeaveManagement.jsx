@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import client from '../../api/client';
-import { Check, X, Calendar, AlertCircle } from 'lucide-react';
+import { Check, X, Calendar, AlertCircle, CalendarRange } from 'lucide-react';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { Badge } from '../../components/ui/Badge';
+import { EmptyState } from '../../components/ui/PageHeader';
+import { SkeletonTableRow } from '../../components/ui/Skeleton';
 
 export const LeaveManagement = () => {
   const [leaves, setLeaves] = useState([]);
@@ -42,18 +47,20 @@ export const LeaveManagement = () => {
         return l;
       });
       setLeaves(updated);
+      toast.success(newStatus === 'Approved' ? 'Leave approved' : 'Leave rejected');
     } catch (err) {
       console.error('Failed to update leave status:', err);
       setError('Failed to update leave request status.');
+      toast.error('Failed to update leave request status.');
     }
   };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Student Leaves & Gate Passes</h1>
-        <p className="text-xs text-slate-500 font-medium">Review and process out-of-station checkouts and check-in range applications.</p>
-      </div>
+      <PageHeader
+        title="Student Leaves & Gate Passes"
+        subtitle="Review and process out-of-station checkouts and check-in range applications."
+      />
 
       {error && (
         <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 rounded-xl text-xs font-bold flex items-center gap-2">
@@ -75,45 +82,50 @@ export const LeaveManagement = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
-              {leaves.map((l) => (
-                <tr key={l.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/10 transition-colors">
-                  <td className="p-4 font-bold text-slate-900 dark:text-white">
-                    {l.studentName} <span className="text-[10px] text-slate-455 block font-semibold mt-0.5">Room {l.roomNo}</span>
-                  </td>
-                  <td className="p-4 font-semibold text-slate-655 dark:text-slate-350">
-                    <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-indigo-500" /> {l.startDate} to {l.endDate}</span>
-                  </td>
-                  <td className="p-4 text-slate-550 leading-relaxed max-w-xs truncate">{l.reason}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      l.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500' :
-                      l.status === 'Pending' ? 'bg-amber-500/10 text-amber-550' : 'bg-red-500/10 text-red-505'
-                    }`}>
-                      {l.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-right">
-                    {l.status === 'Pending' && (
-                      <div className="flex gap-1.5 justify-end">
-                        <button
-                          onClick={() => handleStatusUpdate(l.id, 'Approved')}
-                          title="Approve Leave"
-                          className="p-1.5 bg-emerald-55/10 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer"
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleStatusUpdate(l.id, 'Rejected')}
-                          title="Reject Leave"
-                          className="p-1.5 bg-red-50 dark:bg-red-955/20 text-red-655 rounded-lg hover:bg-red-100 transition-colors cursor-pointer"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => <SkeletonTableRow key={i} cols={5} />)
+              ) : leaves.length === 0 ? (
+                <tr>
+                  <td colSpan={5}>
+                    <EmptyState icon={CalendarRange} title="No leave requests" description="Outpass requests from residents will appear here." />
                   </td>
                 </tr>
-              ))}
+              ) : (
+                leaves.map((l) => (
+                  <tr key={l.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/10 transition-colors">
+                    <td className="p-4 font-bold text-slate-900 dark:text-white">
+                      {l.studentName} <span className="text-[10px] text-slate-455 block font-semibold mt-0.5">Room {l.roomNo}</span>
+                    </td>
+                    <td className="p-4 font-semibold text-slate-655 dark:text-slate-350">
+                      <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5 text-indigo-500" /> {l.startDate} to {l.endDate}</span>
+                    </td>
+                    <td className="p-4 text-slate-550 leading-relaxed max-w-xs truncate">{l.reason}</td>
+                    <td className="p-4">
+                      <Badge status={l.status} />
+                    </td>
+                    <td className="p-4 text-right">
+                      {l.status === 'Pending' && (
+                        <div className="flex gap-1.5 justify-end">
+                          <button
+                            onClick={() => handleStatusUpdate(l.id, 'Approved')}
+                            title="Approve Leave"
+                            className="p-1.5 bg-emerald-55/10 text-emerald-600 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors cursor-pointer"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleStatusUpdate(l.id, 'Rejected')}
+                            title="Reject Leave"
+                            className="p-1.5 bg-red-50 dark:bg-red-955/20 text-red-655 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { Mail, Phone, MapPin, Send, CheckCircle2 } from 'lucide-react';
 import client from '../../api/client';
 
@@ -32,6 +34,7 @@ export const ContactPage = () => {
     if (formData.name && formData.email && formData.message) {
       setSubmitted(true);
       setFormData({ name: '', email: '', message: '' });
+      toast.success('Inquiry sent — we\'ll be in touch soon');
       setTimeout(() => setSubmitted(false), 5000);
     }
   };
@@ -87,9 +90,21 @@ export const ContactPage = () => {
         </div>
 
         {/* Right Side: Form */}
-        <div className="md:col-span-7 bg-white dark:bg-slate-955 p-8 rounded-3xl border border-slate-200 dark:border-slate-850 shadow-xl transition-colors flex flex-col justify-center">
+        <motion.div
+          initial={{ opacity: 0, x: 16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="md:col-span-7 bg-white dark:bg-slate-955 p-8 rounded-3xl border border-slate-200 dark:border-slate-850 shadow-xl transition-colors flex flex-col justify-center"
+        >
+          <AnimatePresence mode="wait">
           {submitted ? (
-            <div className="text-center py-10 space-y-4">
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-center py-10 space-y-4"
+            >
               <div className="inline-flex p-4 bg-emerald-500/10 text-emerald-500 rounded-2xl mb-2">
                 <CheckCircle2 className="w-10 h-10 animate-bounce" />
               </div>
@@ -97,9 +112,9 @@ export const ContactPage = () => {
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
                 Thank you for reaching out. We have received your inquiry and our warden will contact you shortly.
               </p>
-            </div>
+            </motion.div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <motion.form key="form" exit={{ opacity: 0 }} onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-650 dark:text-slate-400 uppercase tracking-wider mb-2">
                   Full Name
@@ -142,16 +157,19 @@ export const ContactPage = () => {
                 />
               </div>
 
-              <button
+              <motion.button
                 type="submit"
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
                 className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex justify-center items-center gap-2 shadow-lg shadow-indigo-600/15"
               >
                 Send Message / Inquiry
                 <Send className="w-4 h-4" />
-              </button>
-            </form>
+              </motion.button>
+            </motion.form>
           )}
-        </div>
+          </AnimatePresence>
+        </motion.div>
 
       </div>
     </div>

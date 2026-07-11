@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import client from '../../api/client';
 import { ShieldCheck, ShieldAlert, ArrowRight, User, Mail, Lock, Phone, MapPin, Briefcase } from 'lucide-react';
@@ -63,7 +64,12 @@ export const RegisterPage = () => {
       <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
         
         {/* Form panel */}
-        <div className="md:col-span-8 bg-white dark:bg-slate-955 p-8 rounded-3xl border border-slate-200 dark:border-slate-850 shadow-xl flex flex-col justify-between transition-colors">
+        <motion.div
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="md:col-span-8 bg-white dark:bg-slate-955 p-8 rounded-3xl border border-slate-200 dark:border-slate-850 shadow-xl flex flex-col justify-between transition-colors"
+        >
           <div>
             <div className="flex items-center gap-2 mb-6">
               <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xl">
@@ -227,20 +233,27 @@ export const RegisterPage = () => {
                 </div>
               </div>
 
-              <button
+              <motion.button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex justify-center items-center gap-2 shadow-lg shadow-indigo-600/10 mt-6 transition-all"
+                whileHover={{ scale: loading ? 1 : 1.01 }}
+                whileTap={{ scale: loading ? 1 : 0.98 }}
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex justify-center items-center gap-2 shadow-lg shadow-indigo-600/10 mt-6 transition-all disabled:opacity-60"
               >
                 {loading ? 'Submitting Application...' : 'Register as Tenant & Login'}
                 {!loading && <ArrowRight className="w-4.5 h-4.5" />}
-              </button>
+              </motion.button>
             </form>
           </div>
-        </div>
+        </motion.div>
 
         {/* Info panel */}
-        <div className="md:col-span-4 bg-gradient-to-br from-indigo-955 to-slate-950 text-white p-8 rounded-3xl border border-slate-800 shadow-xl flex flex-col justify-between">
+        <motion.div
+          initial={{ opacity: 0, x: 16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4, delay: 0.1, ease: 'easeOut' }}
+          className="md:col-span-4 bg-gradient-to-br from-indigo-955 to-slate-950 text-white p-8 rounded-3xl border border-slate-800 shadow-xl flex flex-col justify-between"
+        >
           <div>
             <div className="flex items-center gap-2 mb-6">
               <ShieldCheck className="w-6 h-6 text-indigo-400" />
@@ -265,7 +278,7 @@ export const RegisterPage = () => {
             Already have a tenant account?{' '}
             <Link to="/login" className="font-bold text-indigo-400 hover:underline">Sign In</Link>
           </div>
-        </div>
+        </motion.div>
 
       </div>
     </div>

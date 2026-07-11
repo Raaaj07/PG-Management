@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { DoorOpen, Plus, Search, Calendar, QrCode, CheckCircle, X, AlertCircle } from 'lucide-react';
+import { Modal } from '../../components/ui/Modal';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { EmptyState } from '../../components/ui/PageHeader';
 
 export default function VisitorRequests() {
   const { user } = useAuth();
@@ -73,10 +78,12 @@ export default function VisitorRequests() {
       // Auto show gate pass
       setActivePass(newGuest);
       setSuccessMsg('Guest pre-registered! Gate pass generated.');
+      toast.success('Gate pass generated');
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
       console.error('Failed to pre-register guest:', err);
       setError('Failed to submit visitor gate pass request.');
+      toast.error('Failed to submit visitor gate pass request.');
     } finally {
       setLoading(false);
     }
@@ -92,12 +99,9 @@ export default function VisitorRequests() {
             Generate QR entry passes to pre-authorize parent or friend visits at the security gate.
           </p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-650 text-white rounded-xl text-xs font-bold hover:bg-indigo-755 transition-all shadow-md shadow-indigo-600/10 cursor-pointer self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" /> Pre-Register Guest
-        </button>
+        <Button icon={Plus} onClick={() => setIsModalOpen(true)} className="self-start sm:self-auto">
+          Pre-Register Guest
+        </Button>
       </div>
 
       {/* Success banner */}
@@ -126,9 +130,7 @@ export default function VisitorRequests() {
 
         <div className="divide-y divide-slate-100 dark:divide-slate-855 text-xs">
           {visitors.length === 0 ? (
-            <div className="p-12 text-center text-slate-450 dark:text-slate-550">
-              No visitors registered.
-            </div>
+            <EmptyState icon={DoorOpen} title="No visitors registered" description="Pre-register a guest to generate their gate pass." />
           ) : (
             visitors.map(vis => (
               <div key={vis.id} className="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:bg-slate-50/40 dark:hover:bg-slate-900/10 transition-colors">
@@ -152,13 +154,7 @@ export default function VisitorRequests() {
                 </div>
 
                 <div className="flex items-center gap-3 shrink-0 self-end md:self-auto">
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                    vis.status === 'Checked In'
-                      ? 'bg-indigo-50 dark:bg-indigo-955/35 text-indigo-650'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-655'
-                  }`}>
-                    {vis.status}
-                  </span>
+                  <Badge tone={vis.status === 'Checked In' ? 'indigo' : 'neutral'}>{vis.status}</Badge>
 
                   {vis.status === 'Checked In' && (
                     <button
@@ -176,20 +172,20 @@ export default function VisitorRequests() {
       </div>
 
       {/* Pre-register Modal sheet */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-55 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-extrabold text-base">Pre-Register Guest</h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-405 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+      <Modal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        title="Pre-Register Guest"
+        icon={DoorOpen}
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setIsModalOpen(false)} disabled={loading}>Cancel</Button>
+            <Button type="submit" form="visitor-request-form" loading={loading}>Generate Pass</Button>
+          </>
+        }
+      >
+            <form id="visitor-request-form" onSubmit={handleSubmit} className="space-y-4 text-xs">
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1.5">
                   Guest Full Name *
@@ -245,40 +241,19 @@ export default function VisitorRequests() {
                 />
               </div>
 
-              <div className="pt-2 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="w-full py-2 border border-slate-350 dark:border-slate-800 text-slate-655 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-900 transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="w-full py-2 bg-indigo-650 hover:bg-indigo-755 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/10 cursor-pointer"
-                >
-                  Generate Pass
-                </button>
-              </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* QR Gatepass modal view */}
-      {activePass && (
-        <div className="fixed inset-0 z-55 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center space-y-6">
-            <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-850">
-              <h3 className="font-extrabold text-sm text-left">Digital Gate Entry Pass</h3>
-              <button
-                onClick={() => setActivePass(null)}
-                className="text-slate-405 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
+      <Modal
+        open={!!activePass}
+        onOpenChange={(v) => !v && setActivePass(null)}
+        title="Digital Gate Entry Pass"
+        icon={QrCode}
+        size="sm"
+      >
+        {activePass && (
+          <div className="text-center space-y-6">
             {/* Visual QR mock graphic */}
             <div className="bg-slate-50 dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-850 inline-flex flex-col items-center">
               <div className="w-40 h-40 bg-white border border-slate-200 rounded-xl flex items-center justify-center p-2 relative shadow-inner">
@@ -333,8 +308,8 @@ export default function VisitorRequests() {
               </p>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }
