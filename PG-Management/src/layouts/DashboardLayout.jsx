@@ -108,6 +108,7 @@ export const DashboardLayout = () => {
             { name: 'Leave Approvals', path: '/warden/leaves', icon: CalendarRange, badge: allLeaves.filter(l => l.status === 'Pending').length },
             { name: 'Visitor Tracking', path: '/warden/visitors', icon: DoorOpen, badge: allVisitors.filter(v => v.status === 'Checked In').length },
             { name: 'Notifications', path: '/warden/notifications', icon: BellRing },
+            { name: 'Profile Details', path: '/warden/profile', icon: User },
           ];
         } else if (user.role === 'student') {
           menu = [
@@ -394,7 +395,7 @@ export const DashboardLayout = () => {
                   <div className="p-2 space-y-1">
                     <DropdownMenu.Item asChild>
                       <Link
-                        to={user?.role === 'hostel-admin' ? '/hostel-admin/settings' : user?.role === 'student' ? '/tenant/profile' : '#'}
+                        to={user?.role === 'hostel-admin' ? '/hostel-admin/settings' : user?.role === 'warden' ? '/warden/profile' : '/tenant/profile'}
                         className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-750 dark:text-slate-350 hover:text-indigo-650 dark:hover:text-indigo-400 transition-colors outline-none cursor-pointer"
                       >
                         <User className="w-4 h-4 text-slate-450" />

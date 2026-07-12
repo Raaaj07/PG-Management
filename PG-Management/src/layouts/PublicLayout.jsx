@@ -61,7 +61,7 @@ export const PublicLayout = () => {
               <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-indigo-600/20">
                 H
               </div>
-              <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent">
+              <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-indigo-600 to-violet-500 dark:from-indigo-400 dark:to-violet-400 bg-clip-text text-transparent">
                 {pgName}
               </span>
             </Link>
@@ -243,7 +243,7 @@ export const PublicLayout = () => {
                 <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-lg">
                   H
                 </div>
-                <span className="font-extrabold text-lg bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent">
+                <span className="font-extrabold text-lg bg-gradient-to-r from-indigo-600 to-violet-500 dark:from-indigo-400 dark:to-violet-400 bg-clip-text text-transparent">
                   {pgName}
                 </span>
               </div>

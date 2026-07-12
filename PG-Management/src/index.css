@@ -283,13 +283,25 @@
 */
 .dark .bg-indigo-650,
 .dark .bg-indigo-750,
-.dark .bg-indigo-755 {
+.dark .bg-indigo-755,
+.dark .hover\:bg-indigo-650:hover,
+.dark .hover\:bg-indigo-700:hover,
+.dark .hover\:bg-indigo-750:hover,
+.dark .hover\:bg-indigo-755:hover {
   color: #09090b !important;
 }
 
 .dark .bg-indigo-650 *,
 .dark .bg-indigo-750 *,
 .dark .bg-indigo-755 * {
+  color: #09090b !important;
+  stroke: #09090b !important;
+}
+
+.dark .hover\:bg-indigo-650:hover *,
+.dark .hover\:bg-indigo-700:hover *,
+.dark .hover\:bg-indigo-755:hover *,
+.dark .hover\:bg-indigo-750:hover * {
   color: #09090b !important;
   stroke: #09090b !important;
 }

@@ -33,6 +33,7 @@ import WardenComplaintManagement from '../pages/warden/WardenComplaintManagement
 import LeaveApprovals from '../pages/warden/LeaveApprovals';
 import VisitorTracking from '../pages/warden/VisitorTracking';
 import Notifications from '../pages/warden/Notifications';
+import WardenProfile from '../pages/warden/WardenProfile';
 
 // Tenant Pages
 import TenantDashboard from '../pages/tenant/TenantDashboard';
@@ -97,6 +98,7 @@ export const AppRoutes = () => {
         <Route path="leaves" element={<LeaveApprovals />} />
         <Route path="visitors" element={<VisitorTracking />} />
         <Route path="notifications" element={<Notifications />} />
+        <Route path="profile" element={<WardenProfile />} />
       </Route>
 
       {/* Tenant / Resident Protected Pages */}

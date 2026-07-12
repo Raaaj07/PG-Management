@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { Users, CalendarRange, DoorOpen, ShieldAlert, Check, X, ArrowRight } from 'lucide-react';
+import { Users, CalendarRange, DoorOpen, ShieldAlert, Check, X, ArrowRight, ShieldCheck } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
 import { SkeletonStatCard } from '../../components/ui/Skeleton';
 
@@ -109,17 +109,35 @@ export default function WardenDashboard() {
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="relative overflow-hidden bg-gradient-to-r from-indigo-650 to-violet-600 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-indigo-600/10"
+        className="relative overflow-hidden bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-850 rounded-3xl p-6 md:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all duration-200"
       >
-        <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
-        <div className="max-w-xl space-y-2 relative">
-          <span className="bg-white/20 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-tr from-indigo-500/10 to-violet-500/10 blur-3xl pointer-events-none" />
+        
+        <div className="max-w-xl space-y-3 relative z-10">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
             Warden Staff Console
           </span>
-          <h1 className="text-xl md:text-3xl font-extrabold tracking-tight">Welcome Back, {user?.name}!</h1>
-          <p className="text-xs text-indigo-100 leading-relaxed font-semibold">
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+            Welcome Back, <span className="bg-gradient-to-r from-indigo-600 to-violet-500 dark:from-indigo-400 dark:to-violet-400 bg-clip-text text-transparent">{user?.name}</span>!
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
             Operational dashboard for {user?.hostelName || 'Elite Residency PG'}. Monitor resident directories, guest trackers, and process outpass leaves.
           </p>
+        </div>
+        
+        {/* Quick status decoration widget on the right */}
+        <div className="relative z-10 flex items-center gap-4 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-850 p-4 rounded-2xl shrink-0">
+          <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">System Status</div>
+            <div className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 mt-0.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              All Services Online
+            </div>
+          </div>
         </div>
       </motion.div>
 

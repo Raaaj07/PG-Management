@@ -108,7 +108,7 @@ export const LandingPage = () => {
             className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none text-slate-900 dark:text-white max-w-4xl mx-auto"
           >
             Experience Premium Co-Living at{' '}
-            <span className="bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-indigo-600 to-violet-500 dark:from-indigo-400 dark:to-violet-400 bg-clip-text text-transparent">
               {pgInfo.name}
             </span>
           </motion.h1>
